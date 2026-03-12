@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'quanlykho',  # Thêm ứng dụng của bạn vào đây
 ]
 
 MIDDLEWARE = [
@@ -55,7 +56,7 @@ ROOT_URLCONF = 'quanlykho.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [], # Bạn có thể để trống nếu dùng APP_DIRS: True
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [

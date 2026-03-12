@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tổng quan - QuanLyDonHang</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen flex">
+    <!-- Sidebar -->
+    <aside class="w-64 bg-white border-r border-slate-200 flex flex-col h-screen sticky top-0">
+        <div class="p-6 flex items-center gap-3">
+            <div class="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">
+                <i data-lucide="package" class="text-white w-5 h-5"></i>
+            </div>
+            <span class="font-bold text-xl text-slate-900">OrderMaster</span>
+        </div>
+
+        <nav class="flex-1 px-4 space-y-1">
+            <a href="#" class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all bg-indigo-50 text-indigo-600">
+                <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
+                <span>Tổng quan</span>
+            </a>
+            <a href="#" class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all text-slate-600 hover:bg-slate-50 hover:text-slate-900">
+                <i data-lucide="package" class="w-5 h-5"></i>
+                <span>Đơn hàng</span>
+            </a>
+            <a href="#" class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all text-slate-600 hover:bg-slate-50 hover:text-slate-900">
+                <i data-lucide="users" class="w-5 h-5"></i>
+                <span>Khách hàng</span>
+            </a>
+            <a href="#" class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all text-slate-600 hover:bg-slate-50 hover:text-slate-900">
+                <i data-lucide="settings" class="w-5 h-5"></i>
+                <span>Cài đặt</span>
+            </a>
+        </nav>
+
+        <div class="p-4 border-t border-slate-100">
+            <a href="{% url 'logout' %}" class="flex items-center gap-3 px-4 py-3 text-slate-600 hover:bg-slate-50 hover:text-indigo-600 rounded-xl w-full transition-colors">
+                <i data-lucide="log-out" class="w-5 h-5"></i>
+                <span class="font-medium">Đăng xuất</span>
+            </a>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 flex flex-col overflow-hidden">
+        <!-- Header -->
+        <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 shrink-0">
+            <div class="relative w-96">
+                <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4"></i>
+                <input 
+                    type="text" 
+                    placeholder="Tìm kiếm đơn hàng, khách hàng..." 
+                    class="w-full pl-10 pr-4 py-2 bg-slate-100 border-transparent rounded-lg text-sm focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                >
+            </div>
+
+            <div class="flex items-center gap-4">
+                <button class="p-2 text-slate-500 hover:bg-slate-100 rounded-full relative">
+                    <i data-lucide="bell" class="w-5 h-5"></i>
+                    <span class="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
+                </button>
+                <div class="flex items-center gap-3 pl-4 border-l border-slate-200">
+                    <div class="text-right">
+                        <p class="text-sm font-semibold text-slate-900">Quản trị viên</p>
+                        <p class="text-xs text-slate-500">{{ user_email }}</p>
+                    </div>
+                    <div class="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-700 font-bold">
+                        {{ user_initial }}
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Content Area -->
+        <div class="flex-1 overflow-y-auto p-8">
+            <div class="flex items-center justify-between mb-8">
+                <div>
+                    <h2 class="text-2xl font-bold text-slate-900">Quản lý đơn hàng</h2>
+                    <p class="text-slate-500">Xem và quản lý tất cả các đơn hàng trong hệ thống.</p>
+                </div>
+                <button class="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2.5 rounded-xl font-semibold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200">
+                    <i data-lucide="plus" class="w-5 h-5"></i>
+                    Tạo đơn hàng mới
+                </button>
+            </div>
+
+            <!-- Stats -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                {% for stat in stats %}
+                <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                    <p class="text-sm font-medium text-slate-500 mb-2">{{ stat.label }}</p>
+                    <div class="flex items-end justify-between">
+                        <h4 class="text-2xl font-bold text-slate-900">{{ stat.value }}</h4>
+                        <span class="text-xs font-bold px-2 py-1 rounded-lg {% if stat.is_positive %}bg-emerald-50 text-emerald-600{% else %}bg-red-50 text-red-600{% endif %}">
+                            {{ stat.change }}
+                        </span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- Table -->
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <div class="p-6 border-b border-slate-100 flex items-center justify-between">
+                    <h3 class="font-bold text-slate-900">Đơn hàng gần đây</h3>
+                    <div class="flex gap-2">
+                        <button class="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-slate-600 bg-slate-50 border border-slate-200 rounded-lg hover:bg-slate-100">
+                            <i data-lucide="filter" class="w-4 h-4"></i>
+                            Bộ lọc
+                        </button>
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead>
+                            <tr class="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider">
+                                <th class="px-6 py-4 font-semibold">Mã đơn hàng</th>
+                                <th className="px-6 py-4 font-semibold">Khách hàng</th>
+                                <th className="px-6 py-4 font-semibold">Ngày tạo</th>
+                                <th className="px-6 py-4 font-semibold">Trạng thái</th>
+                                <th className="px-6 py-4 font-semibold text-right">Tổng tiền</th>
+                                <th className="px-6 py-4 font-semibold"></th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            {% for order in orders %}
+                            <tr class="hover:bg-slate-50 transition-colors group">
+                                <td class="px-6 py-4 font-mono text-sm text-indigo-600 font-medium">{{ order.id }}</td>
+                                <td class="px-6 py-4 font-medium text-slate-900">{{ order.customer }}</td>
+                                <td class="px-6 py-4 text-sm text-slate-500">{{ order.date }}</td>
+                                <td class="px-6 py-4">
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 
+                                        {% if order.status == 'Đã giao' %}bg-emerald-100 text-emerald-700
+                                        {% elif order.status == 'Đang xử lý' %}bg-amber-100 text-amber-700
+                                        {% else %}bg-red-100 text-red-700{% endif %}">
+                                        {{ order.status }}
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 text-sm font-semibold text-slate-900 text-right">{{ order.total }}</td>
+                                <td class="px-6 py-4 text-right">
+                                    <button class="p-1 text-slate-400 hover:text-slate-600">
+                                        <i data-lucide="more-vertical" class="w-4 h-4"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="p-4 border-t border-slate-100 flex items-center justify-center">
+                    <button class="text-sm font-medium text-indigo-600 hover:text-indigo-500 flex items-center gap-1">
+                        Xem tất cả đơn hàng
+                        <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Initialize Lucide icons
+        lucide.createIcons();
+    </script>
+</body>
+</html>
