@@ -16,14 +16,20 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
-from . import views # Import views từ cùng thư mục
+from . import views
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('health/', views.health_check, name='health_check'),
-    
-    # Các đường dẫn mới
+
+    # Auth
     path('', views.login_view, name='login'),
-    path('dashboard/', views.dashboard_view, name='dashboard'),
     path('logout/', views.logout_view, name='logout'),
+
+    # Main pages
+    path('dashboard/', views.dashboard_view, name='dashboard'),
+    path('products/', views.products_view, name='products'),
+    path('categories/', views.categories_view, name='categories'),
+    path('units/', views.units_view, name='units'),
+    path('accounts/', views.accounts_view, name='accounts'),
 ]

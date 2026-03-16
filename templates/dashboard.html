@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard — TeLiet System{% endblock %}
+{% block breadcrumb %}Dashboard{% endblock %}
+{% block nav_dashboard %}active{% endblock %}
+
+{% block extra_css %}
+        .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; align-items: start; }
+        .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; position: relative; overflow: hidden; transition: border-color 0.2s; }
+        .stat-card:hover { border-color: var(--accent); }
+        .stat-card::after { content: ''; position: absolute; top: 0; right: 0; width: 80px; height: 80px; background: radial-gradient(circle, rgba(232,164,39,0.06), transparent 70%); }
+        .stat-label { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 10px; }
+        .stat-val { font-family: 'Syne', sans-serif; font-size: 28px; font-weight: 700; color: var(--text); line-height: 1; margin-bottom: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .stat-change { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 4px; width: fit-content; }
+        .stat-change.up { background: rgba(34,197,94,0.1); color: var(--success); }
+        .stat-change.down { background: rgba(239,68,68,0.1); color: var(--danger); }
+        .quick-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px; }
+        .quick-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px; display: flex; align-items: center; gap: 12px; cursor: pointer; transition: all 0.15s; text-decoration: none; }
+        .quick-card:hover { border-color: var(--accent); background: var(--surface2); }
+        .quick-icon { width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .quick-title { font-size: 13px; font-weight: 600; color: var(--text); }
+        .quick-sub { font-size: 11px; color: var(--muted); margin-top: 1px; }
+{% endblock %}
+
+{% block content %}
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Tổng quan hệ thống</h1>
+            <p class="page-sub">{{ today|date:"l, d F, Y" }}</p>
+        </div>
+        <a href="#" class="btn btn-primary">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Tạo đơn hàng mới
+        </a>
+    </div>
+
+    <!-- STATS -->
+    <div class="stats-grid">
+        {% for stat in stats %}
+        <div class="stat-card">
+            <div class="stat-label">{{ stat.label }}</div>
+            <div class="stat-val">{{ stat.value }}</div>
+            <span class="stat-change {% if stat.is_positive %}up{% else %}down{% endif %}">
+                {% if stat.is_positive %}▲{% else %}▼{% endif %} {{ stat.change }}
+            </span>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- QUICK ACTIONS -->
+    <div class="quick-grid">
+        <a href="#" class="quick-card">
+            <div class="quick-icon" style="background:rgba(232,164,39,0.12);">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#e8a427" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+            </div>
+            <div><div class="quick-title">Nhập kho</div><div class="quick-sub">Tạo phiếu nhập</div></div>
+        </a>
+        <a href="#" class="quick-card">
+            <div class="quick-icon" style="background:rgba(59,130,246,0.12);">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="11" y2="16"/></svg>
+            </div>
+            <div><div class="quick-title">Tạo đơn bán</div><div class="quick-sub">Đơn hàng mới</div></div>
+        </a>
+        <a href="#" class="quick-card">
+            <div class="quick-icon" style="background:rgba(34,197,94,0.12);">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+            </div>
+            <div><div class="quick-title">Xem báo cáo</div><div class="quick-sub">Doanh thu, tồn kho</div></div>
+        </a>
+        <a href="{% url 'accounts' %}" class="quick-card">
+            <div class="quick-icon" style="background:rgba(139,92,246,0.12);">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            </div>
+            <div><div class="quick-title">Tài khoản</div><div class="quick-sub">Quản lý nhân viên</div></div>
+        </a>
+    </div>
+
+    <!-- RECENT ORDERS TABLE -->
+    <div class="card">
+        <div class="card-header">
+            <span class="card-title">Đơn hàng gần đây</span>
+            <div class="card-actions">
+                <div class="search-wrap">
+                    <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    <input class="search-input" placeholder="Tìm kiếm đơn hàng...">
+                </div>
+                <button class="btn btn-ghost" style="padding:7px 14px;font-size:12px;">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+                    Lọc
+                </button>
+            </div>
+        </div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Mã đơn</th><th>Khách hàng</th><th>Vật liệu</th>
+                    <th>Ngày tạo</th><th>Trạng thái</th>
+                    <th style="text-align:right">Tổng tiền</th><th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for order in orders %}
+                <tr>
+                    <td class="bold">{{ order.ma_don }}</td>
+                    <td>{{ order.khach_hang }}</td>
+                    <td>{{ order.vat_lieu }}</td>
+                    <td>{{ order.ngay_tao }}</td>
+                    <td><span class="badge {{ order.trang_thai_class }}"><span class="badge-dot" style="background:{{ order.dot_color }}"></span>{{ order.trang_thai }}</span></td>
+                    <td style="text-align:right" class="bold">{{ order.tong_tien }}</td>
+                    <td><button class="action-btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg></button></td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="7" style="text-align:center;padding:32px;color:var(--muted);">Chưa có đơn hàng nào</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <div class="table-foot">
+            <span>Hiển thị {{ orders|length }} / {{ total_orders|default:0 }} đơn hàng</span>
+            <div class="pagination">
+                <div class="pg-btn">‹</div>
+                {% for i in page_range %}<div class="pg-btn {% if i == current_page %}active{% endif %}">{{ i }}</div>{% endfor %}
+                <div class="pg-btn">›</div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
