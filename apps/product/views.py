@@ -67,3 +67,4 @@ class ProductDeleteView(LoginRequiredMixin, View):
         product.delete()
         messages.warning(request, f'Đã xóa sản phẩm {product.name}')
         return redirect('product:index')
+    
