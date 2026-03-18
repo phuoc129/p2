@@ -22,6 +22,10 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('health/', views.health_check, name='health_check'),
 
+    # Unit
+    path('api/units/save/', views.api_save_unit, name='api_save_unit'),
+    path('api/units/delete/<str:unit_id>/', views.api_delete_unit, name='api_delete_unit'),
+
     # Auth
     path('', views.login_view, name='login'),
     path('logout/', views.logout_view, name='logout'),

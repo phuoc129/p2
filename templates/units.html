@@ -35,6 +35,8 @@
 {% endblock %}
 
 {% block content %}
+    {% csrf_token %}
+    
     <div class="page-header">
         <div><h1 class="page-title">Đơn vị & Quy đổi</h1></div>
         <button class="btn btn-primary" onclick="openModal('create')">
@@ -46,9 +48,9 @@
         <table>
             <thead>
                 <tr>
-                    <th>Tên đơn vị</th>
-                    <th>Ký hiệu</th>
-                    <th>Quy đổi (về đơn vị cơ bản)</th>
+                    <th>Sản phẩm</th>
+                    <th>Tên đơn vị quy đổi</th>
+                    <th>Tỷ lệ (x Đơn vị gốc)</th>
                     <th>Thao tác</th>
                 </tr>
             </thead>
@@ -77,28 +79,40 @@
                 <span class="modal-title" id="modal-title">Thêm đơn vị mới</span>
                 <button class="modal-close" onclick="closeModal()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
             </div>
-            <div class="field"><label class="field-label">Tên đơn vị *</label><input type="text" id="f-name" placeholder="Ví dụ: Bao"></div>
-            <div class="field"><label class="field-label">Ký hiệu *</label><input type="text" id="f-symbol" placeholder="Ví dụ: bao"></div>
+            
             <div class="field">
-                <label class="field-label">Tỷ lệ quy đổi</label>
-                <input type="number" id="f-ratio" value="1" step="0.01">
-                <p style="font-size:11px;color:var(--muted);margin-top:5px;">Ví dụ: 1 Tấn = 1000 Kg (nhập 1000)</p>
+                <label class="field-label">Sản phẩm áp dụng *</label>
+                <select id="f-product" class="search-input" style="width: 100%; padding: 11px 14px;">
+                    <option value="">-- Chọn sản phẩm --</option>
+                    </select>
             </div>
+
+            <div class="field"><label class="field-label">Tên đơn vị quy đổi *</label><input type="text" id="f-name" placeholder="Ví dụ: Tấn, Thiên, Lốc"></div>
+            
+            <div class="field">
+                <label class="field-label">Tỷ lệ quy đổi *</label>
+                <input type="number" id="f-ratio" value="1" step="0.01">
+                <p style="font-size:11px;color:var(--muted);margin-top:5px;">Số lượng đơn vị gốc tạo thành 1 đơn vị này (VD: 1 Tấn = 1000 Kg -> Nhập 1000)</p>
+            </div>
+            
             <div class="modal-footer">
                 <button class="btn btn-ghost" onclick="closeModal()">Hủy</button>
-                <button class="btn btn-primary" onclick="saveUnit()">Lưu đơn vị</button>
+                <button class="btn btn-primary" onclick="saveUnit()">Lưu cấu hình</button>
             </div>
         </div>
     </div>
 
+    {{ units_json|json_script:"units-data" }}
+    {{ products_json|json_script:"products-data" }}
+
     <script>
-        let units = [
-            { id:1, name:'Kilogram', symbol:'kg', ratio:1 },
-            { id:2, name:'Tấn', symbol:'tấn', ratio:1000 },
-            { id:3, name:'Viên', symbol:'viên', ratio:1 },
-            { id:4, name:'Khối', symbol:'m3', ratio:1 },
-            { id:5, name:'Bao', symbol:'bao', ratio:50 },
-        ];
+        // Lấy dữ liệu thực từ thẻ Script ẩn của Django
+        let units = JSON.parse(document.getElementById('units-data').textContent || '[]');
+        let products = JSON.parse(document.getElementById('products-data').textContent || '[]');
+        
+        // Lấy CSRF Token để gửi yêu cầu POST
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
         let editId = null;
         let deleteId = null;
 
@@ -114,16 +128,23 @@
             setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 300); }, 3500);
         }
 
+        // Đổ danh sách sản phẩm vào thẻ select
+        function renderProductOptions() {
+            const select = document.getElementById('f-product');
+            select.innerHTML = '<option value="">-- Chọn sản phẩm --</option>' + 
+                products.map(p => `<option value="${p.id}">${p.name} (Gốc: ${p.base_unit})</option>`).join('');
+        }
+
         function renderUnits() {
             document.getElementById('unit-list').innerHTML = units.map(u => `
                 <tr>
-                    <td><strong>${u.name}</strong></td>
-                    <td><code style="background:var(--surface2);padding:2px 6px;border-radius:4px;">${u.symbol}</code></td>
-                    <td>${u.ratio > 1 ? `1 ${u.symbol} = ${u.ratio} đơn vị cơ bản` : 'Đơn vị cơ bản'}</td>
+                    <td><strong>${u.product_name}</strong></td>
+                    <td><code style="background:var(--surface2);padding:2px 6px;border-radius:4px;color:var(--text)">${u.unit_name}</code></td>
+                    <td>1 ${u.unit_name} = ${u.conversion_rate} ${u.base_unit}</td>
                     <td>
                         <div class="action-btns">
-                            <button class="action-btn" onclick="openModal('edit',${u.id})"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
-                            <button class="action-btn" onclick="deleteUnit(${u.id})"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M9 6V4h6v2"/></svg></button>
+                            <button class="action-btn" onclick="openModal('edit', '${u.id}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+                            <button class="action-btn" onclick="deleteUnit('${u.id}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M9 6V4h6v2"/></svg></button>
                         </div>
                     </td>
                 </tr>`).join('');
@@ -131,48 +152,98 @@
 
         function openModal(type, id) {
             editId = id || null;
+            renderProductOptions();
+
             if (type === 'create') {
                 document.getElementById('modal-title').textContent = 'Thêm đơn vị mới';
+                document.getElementById('f-product').value = '';
                 document.getElementById('f-name').value = '';
-                document.getElementById('f-symbol').value = '';
                 document.getElementById('f-ratio').value = 1;
             } else {
-                const u = units.find(x=>x.id===id);
+                const u = units.find(x => x.id === id);
                 document.getElementById('modal-title').textContent = 'Chỉnh sửa đơn vị';
-                document.getElementById('f-name').value = u.name;
-                document.getElementById('f-symbol').value = u.symbol;
-                document.getElementById('f-ratio').value = u.ratio;
+                document.getElementById('f-product').value = u.product_id;
+                document.getElementById('f-name').value = u.unit_name;
+                document.getElementById('f-ratio').value = u.conversion_rate;
             }
             document.getElementById('modal-form').classList.add('open');
         }
+
         function closeModal() { document.getElementById('modal-form').classList.remove('open'); }
 
-        function saveUnit() {
-            const name = document.getElementById('f-name').value.trim();
-            const symbol = document.getElementById('f-symbol').value.trim();
-            const ratio = parseFloat(document.getElementById('f-ratio').value);
-            if (!name || !symbol || isNaN(ratio)) { alert('Vui lòng nhập đầy đủ thông tin'); return; }
-            if (ratio <= 0) { alert('Tỷ lệ quy đổi phải lớn hơn 0'); return; }
-            if (editId) { const idx = units.findIndex(u=>u.id===editId); units[idx] = {...units[idx], name, symbol, ratio}; showToast('success', 'Cập nhật đơn vị thành công!'); }
-            else { units.push({ id: Date.now(), name, symbol, ratio }); showToast('success', 'Thêm đơn vị mới thành công!'); }
-            closeModal(); renderUnits();
+        async function saveUnit() {
+            const product_id = document.getElementById('f-product').value;
+            const unit_name = document.getElementById('f-name').value.trim();
+            const conversion_rate = parseFloat(document.getElementById('f-ratio').value);
+
+            if (!product_id || !unit_name || isNaN(conversion_rate)) { 
+                showToast('danger', 'Vui lòng nhập đầy đủ thông tin!'); 
+                return; 
+            }
+            if (conversion_rate <= 0) { 
+                showToast('danger', 'Tỷ lệ quy đổi phải lớn hơn 0'); 
+                return; 
+            }
+
+            // Dữ liệu gửi lên server
+            const payload = { id: editId, product_id, unit_name, conversion_rate };
+
+            try {
+                // GỌI API LÊN DJANGO VIEW
+                const response = await fetch('/api/units/save/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    showToast('success', editId ? 'Cập nhật thành công!' : 'Thêm mới thành công!');
+                    // Tải lại trang sau 1 giây để thấy dữ liệu mới
+                    setTimeout(() => location.reload(), 1000); 
+                } else {
+                    showToast('danger', result.message || 'Lỗi lưu dữ liệu');
+                }
+            } catch (error) {
+                showToast('danger', 'Lỗi kết nối máy chủ');
+            }
         }
 
         function deleteUnit(id) {
             deleteId = id;
-            const u = units.find(x=>x.id===id);
+            const u = units.find(x => x.id === id);
             document.getElementById('confirm-title').textContent = 'Xác nhận xóa đơn vị';
-            document.getElementById('confirm-desc').textContent = `Đơn vị "${u.name}" sẽ bị xóa vĩnh viễn khỏi hệ thống. Thao tác này không thể hoàn tác.`;
+            document.getElementById('confirm-desc').textContent = `Đơn vị quy đổi "${u.unit_name}" của sản phẩm "${u.product_name}" sẽ bị xóa.`;
             document.getElementById('modal-confirm').classList.add('open');
         }
+
         function closeConfirm() { document.getElementById('modal-confirm').classList.remove('open'); }
-        function confirmDelete() {
-            units = units.filter(u=>u.id!==deleteId);
-            closeConfirm(); renderUnits();
-            showToast('success', 'Đã xóa đơn vị thành công.');
-            deleteId = null;
+
+        async function confirmDelete() {
+            try {
+                // GỌI API XÓA LÊN DJANGO VIEW
+                const response = await fetch(`/api/units/delete/${deleteId}/`, {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': csrfToken }
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    showToast('success', 'Đã xóa đơn vị thành công.');
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    showToast('danger', result.message || 'Lỗi xóa dữ liệu');
+                }
+            } catch (error) {
+                showToast('danger', 'Lỗi kết nối máy chủ');
+            }
+            closeConfirm();
         }
 
+        // Khởi tạo giao diện lần đầu
         renderUnits();
     </script>
 {% endblock %}

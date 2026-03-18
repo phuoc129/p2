@@ -289,10 +289,10 @@
 
         <div class="sidebar-footer">
             <div class="user-card">
-                <div class="user-avatar">{{ user_initial|default:"A" }}</div>
-                <div class="user-info">
-                    <div class="user-name">{{ user_email|default:"admin@teliet.vn" }}</div>
-                    <div class="user-role">{{ user_role|default:"Quản trị viên" }}</div>
+                <div class="user-avatar">{{ user_initial }}</div>
+                <div class="user-details">
+                    <div class="user-name">{{ user_full_name }}</div>
+                    <div class="user-role">{{ user_role }}</div>
                 </div>
             </div>
             <a href="{% url 'logout' %}" class="nav-item">

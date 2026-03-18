@@ -164,8 +164,25 @@
             color: #fca5a5;
             margin-bottom: 24px;
             display: none;
+            align-items: center;
+            gap: 8px;
         }
-        .alert.show { display: flex; align-items: center; gap: 8px; }
+        /* Màu mặc định cho error (nguy hiểm) */
+        .alert.error {
+            background: rgba(239,68,68,0.1);
+            border-color: rgba(239,68,68,0.3);
+            border-left: 3px solid var(--danger);
+            color: #fca5a5;
+        }
+
+        /* Màu cho success (thành công) */
+        .alert.success {
+            background: rgba(34,197,94,0.1);
+            border-color: rgba(34,197,94,0.3);
+            border-left: 3px solid var(--success);
+            color: #86efac;
+        }
+        .alert.show { display: flex !important;}
         /* Form fields */
         .field { margin-bottom: 20px; }
         .field-label {
@@ -312,10 +329,16 @@
             <p class="form-subtitle">Nhập thông tin đăng nhập để tiếp tục</p>
         </div>
 
-        <div id="alert" class="alert" style="display:none;">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-            <span id="alert-msg">Tên đăng nhập hoặc mật khẩu không đúng</span>
-        </div>
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert show {{ message.tags }}"> 
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                    </svg>
+                    <span>{{ message }}</span>
+                </div>
+            {% endfor %}
+        {% endif %}
 
         <form id="login-form" method="POST" novalidate>
             {% csrf_token %}
@@ -377,44 +400,16 @@
                 icon.innerHTML = '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>';
             }
         }
-        // Tài khoản mặc định (mock)
-        const MOCK_USER = 'admin';
-        const MOCK_PASS = 'admin123';
 
         document.getElementById('login-form').addEventListener('submit', function(e) {
-            e.preventDefault();
-            let valid = true;
-            ['username','password'].forEach(id => {
-                const inp = document.getElementById(id);
-                const err = document.getElementById(id+'-err');
-                if (!inp.value.trim()) {
-                    inp.classList.add('error');
-                    err.classList.add('show');
-                    valid = false;
-                } else {
-                    inp.classList.remove('error');
-                    err.classList.remove('show');
-                }
-            });
-            if (!valid) return;
+            const userInp = document.getElementById('username').value.trim();
+            const passInp = document.getElementById('password').value.trim();
 
-            const username = document.getElementById('username').value.trim();
-            const password = document.getElementById('password').value;
-            const alertEl = document.getElementById('alert');
-            const alertMsg = document.getElementById('alert-msg');
-
-            if (username !== MOCK_USER) {
-                alertEl.style.display = 'flex';
-                alertMsg.textContent = 'Tên đăng nhập không tồn tại trong hệ thống.';
-                document.getElementById('username').classList.add('error');
-            } else if (password !== MOCK_PASS) {
-                alertEl.style.display = 'flex';
-                alertMsg.textContent = 'Mật khẩu không đúng. Vui lòng thử lại.';
-                document.getElementById('password').classList.add('error');
-            } else {
-                alertEl.style.display = 'none';
-                this.submit();
+            if (!userInp || !passInp) {
+                e.preventDefault(); 
+                alert('Vui lòng nhập đầy đủ thông tin!');
             }
+    
         });
         ['username','password'].forEach(id => {
             document.getElementById(id).addEventListener('input', function() {
