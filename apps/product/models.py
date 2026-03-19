@@ -1,45 +1,19 @@
-from django.contrib.auth.models import User
 from django.db import models
-from django.contrib.auth.models import AbstractUser, Group, Permission
+from django.conf import settings # Import settings để lấy AUTH_USER_MODEL
 import uuid
 
-# --- 1. NGƯỜI DÙNG (Custom User) ---
-# class User(AbstractUser):
-#     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-#     full_name = models.CharField(max_length=100)
-#     phone_number = models.CharField(max_length=20, null=True, blank=True)
-#     address = models.TextField(null=True, blank=True)
-    
-#     ROLE_CHOICES = [
-#         ('ADMIN', 'ADMIN'),
-#         ('SALE', 'SALE'),
-#         ('KHO', 'KHO'),
-#         ('KE_TOAN', 'KE_TOAN'),
-#     ]
-#     role = models.CharField(max_length=10, choices=ROLE_CHOICES)
-
-#     # Sửa lỗi Reverse Accessor Clashes bằng related_name
-#     groups = models.ManyToManyField(
-#         Group,
-#         related_name="custom_user_groups",
-#         blank=True
-#     )
-#     user_permissions = models.ManyToManyField(
-#         Permission,
-#         related_name="custom_user_permissions",
-#         blank=True
-#     )
-
-#     class Meta:
-#         db_table = 'users'
-
-# --- 2. DANH MỤC & SẢN PHẨM ---
+# ==========================================
+# 2. DANH MỤC & SẢN PHẨM
+# ==========================================
 class Category(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=255, unique=True)
 
     class Meta:
         db_table = 'categories'
+
+    def __str__(self):
+        return self.name
 
 class Product(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -61,9 +35,11 @@ class ProductUnit(models.Model):
     class Meta:
         db_table = 'product_units'
 
-# --- 3. KHO & TỒN KHO (Sửa lỗi Warning W042 bằng BigAutoField) ---
+# ==========================================
+# 3. KHO & TỒN KHO
+# ==========================================
 class Warehouse(models.Model):
-    id = models.BigAutoField(primary_key=True) # Giải quyết Warning
+    id = models.BigAutoField(primary_key=True)
     name = models.CharField(max_length=100)
     location = models.CharField(max_length=255, null=True, blank=True)
     description = models.TextField(null=True, blank=True)
@@ -72,7 +48,7 @@ class Warehouse(models.Model):
         db_table = 'warehouses'
 
 class Inventory(models.Model):
-    id = models.BigAutoField(primary_key=True) # Giải quyết Warning
+    id = models.BigAutoField(primary_key=True)
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
     warehouse = models.ForeignKey(Warehouse, on_delete=models.CASCADE)
     quantity_on_hand = models.DecimalField(max_digits=15, decimal_places=2, default=0)
@@ -84,12 +60,15 @@ class Inventory(models.Model):
         db_table = 'inventories'
         unique_together = ('product', 'warehouse')
 
-# --- 4. ĐƠN HÀNG & GIAO DỊCH ---
+# ==========================================
+# 4. ĐƠN HÀNG & GIAO DỊCH
+# ==========================================
 class SalesOrder(models.Model):
-    id = models.BigAutoField(primary_key=True) # Giải quyết Warning
+    id = models.BigAutoField(primary_key=True)
     order_code = models.CharField(max_length=20, unique=True)
     customer_name = models.CharField(max_length=100)
-    created_by = models.ForeignKey(User, on_delete=models.PROTECT)
+    # SỬA LỖI TẠI ĐÂY: Dùng settings.AUTH_USER_MODEL thay vì import User trực tiếp
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
     order_date = models.DateTimeField(auto_now_add=True)
     total_amount = models.DecimalField(max_digits=15, decimal_places=2, default=0)
     status = models.CharField(max_length=20, default='Pending')
@@ -98,7 +77,7 @@ class SalesOrder(models.Model):
         db_table = 'sales_orders'
 
 class CustomerDebt(models.Model):
-    id = models.BigAutoField(primary_key=True) # Giải quyết Warning
+    id = models.BigAutoField(primary_key=True)
     sales_order = models.ForeignKey(SalesOrder, on_delete=models.CASCADE)
     customer_name = models.CharField(max_length=100)
     remaining_amount = models.DecimalField(max_digits=15, decimal_places=2, default=0)
@@ -109,22 +88,26 @@ class CustomerDebt(models.Model):
         db_table = 'customer_debts'
 
 class WarehouseTransaction(models.Model):
-    id = models.BigAutoField(primary_key=True) # Giải quyết Warning
+    id = models.BigAutoField(primary_key=True)
     code = models.CharField(max_length=20, unique=True)
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
     warehouse = models.ForeignKey(Warehouse, on_delete=models.CASCADE)
     quantity = models.DecimalField(max_digits=15, decimal_places=2)
     transaction_type = models.CharField(max_length=20) # IMPORT, EXPORT...
     transaction_date = models.DateTimeField(auto_now_add=True)
-    created_by = models.ForeignKey(User, on_delete=models.PROTECT)
+    # SỬA LỖI TẠI ĐÂY: Dùng settings.AUTH_USER_MODEL
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
 
     class Meta:
         db_table = 'warehouse_transactions'
 
-# --- 5. NHẬT KÝ & HỆ THỐNG ---
+# ==========================================
+# 5. NHẬT KÝ & HỆ THỐNG
+# ==========================================
 class SystemLog(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    # SỬA LỖI TẠI ĐÂY: Dùng settings.AUTH_USER_MODEL
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     action_type = models.CharField(max_length=50)
     target_module = models.CharField(max_length=50)
     old_value = models.JSONField(null=True, blank=True)
@@ -136,7 +119,8 @@ class SystemLog(models.Model):
 
 class ExportLog(models.Model):
     id = models.BigAutoField(primary_key=True)
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    # SỬA LỖI TẠI ĐÂY: Dùng settings.AUTH_USER_MODEL
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     report_name = models.CharField(max_length=100)
     format = models.CharField(max_length=10) # EXCEL, PDF
     export_time = models.DateTimeField(auto_now_add=True)

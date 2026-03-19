@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'core',  # Thêm ứng dụng của bạn vào đây
     'apps.product',
+    'apps.authentication',
 ]
 
 MIDDLEWARE = [
@@ -88,6 +89,7 @@ DATABASES = {
     }
 }
 
+AUTH_USER_MODEL = 'authentication.User'
 
 # Password validation
 # https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators

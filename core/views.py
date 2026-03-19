@@ -5,12 +5,13 @@ from django.contrib import messages
 from django.http import JsonResponse
 from django.db import connections
 from django.db.utils import OperationalError
-from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
 
-# Đảm bảo tên Model khớp với cấu trúc Database của bạn
-from .models import ProductUnits, Products 
+# --- IMPORT TẦNG SERVICE ---
+from apps.authentication.services import UserService
+from apps.product.models import ProductUnit, Product # Mở comment và đảm bảo path đúng
 
 # ==========================================
 # 1. HỆ THỐNG & SỨC KHỎE (HEALTH CHECK)
@@ -31,9 +32,10 @@ def health_check(request):
     return JsonResponse(health_status, status=status_code)
 
 # ==========================================
-# 2. XÁC THỰC NGƯỜI DÙNG (AUTHENTICATION)
+# 2. XÁC THỰC NGƯỜI DÙNG (KẾT NỐI SERVICE)
 # ==========================================
 def login_view(request):
+    # Nếu đã đăng nhập rồi thì vào thẳng Dashboard
     if request.user.is_authenticated:
         return redirect('dashboard')
         
@@ -41,12 +43,16 @@ def login_view(request):
         username = request.POST.get('username')
         password = request.POST.get('password')
         
-        user = authenticate(request, username=username, password=password)
+        # Gọi Service để xử lý xác thực
+        auth_service = UserService()
+        user = auth_service.login_service(request, username, password)
+        
         if user is not None:
             login(request, user)
+            messages.success(request, f'Chào mừng trở lại, {user.username}!')
             return redirect('dashboard')
         else:
-            messages.error(request, 'Tên đăng nhập hoặc mật khẩu không đúng.')
+            messages.error(request, 'Tên đăng nhập hoặc mật khẩu không đúng hoặc tài khoản bị khóa.')
             
     return render(request, 'login.html')
 
@@ -55,28 +61,26 @@ def logout_view(request):
     return redirect('login')
 
 # ==========================================
-# 3. HÀM BỔ TRỢ (UTILITIES)
+# 3. HÀM BỔ TRỢ (SỬ DỤNG TRƯỜNG ROLE MỚI)
 # ==========================================
 def _base_context(request):
-    """Context dùng chung cho Sidebar và Thông tin người dùng."""
+    """Lấy thông tin hiển thị dựa trên Custom User Model."""
     user = request.user
     role_name = "Thành viên"
     
     if user.is_authenticated:
-        group = user.groups.first()
-        if group:
-            roles = {
-                'admin': 'Quản trị viên',
-                'warehouse': 'Thủ kho',
-                'sales': 'Nhân viên bán hàng',
-                'accountant': 'Kế toán',
-            }
-            role_name = roles.get(group.name.lower(), group.name)
-        elif user.is_superuser:
-            role_name = "Quản trị hệ thống"
+        # Tận dụng trường 'role' trực tiếp từ Model User bạn đã tạo
+        roles_map = {
+            'ADMIN': 'Quản trị viên',
+            'KHO': 'Thủ kho',
+            'SALE': 'Nhân viên bán hàng',
+            'KE_TOAN': 'Kế toán',
+        }
+        # Lấy tên hiển thị Tiếng Việt từ Map, nếu không có thì dùng giá trị gốc
+        role_name = roles_map.get(user.role, user.role)
 
     return {
-        'user_full_name': user.get_full_name() or user.username,
+        'user_full_name': getattr(user, 'full_name', user.username) if user.is_authenticated else "Khách",
         'user_initial': user.username[0].upper() if user.is_authenticated else '?',
         'user_role': role_name,
     }
@@ -86,6 +90,7 @@ def _base_context(request):
 # ==========================================
 @login_required
 def dashboard_view(request):
+    # Dữ liệu mẫu cho Dashboard
     stats = [
         {'label': 'Tổng đơn hàng', 'value': '1,284', 'change': '+12.5%', 'is_positive': True},
         {'label': 'Doanh thu tháng', 'value': '452M đ', 'change': '+8.2%', 'is_positive': True},
@@ -109,101 +114,35 @@ def dashboard_view(request):
     return render(request, 'dashboard.html', context)
 
 # ==========================================
-# 5. QUẢN LÝ NGHIỆP VỤ (BUSINESS LOGIC)
+# 5. QUẢN LÝ NGHIỆP VỤ (DÙNG LOGIN_REQUIRED)
 # ==========================================
 @login_required
-def products_view(request):
-    return render(request, 'products.html', _base_context(request))
+def product_view(request):
+    return render(request, 'Product.html', _base_context(request))
 
-@login_required
-def categories_view(request):
-    return render(request, 'categories.html', _base_context(request))
-
-@login_required
-def accounts_view(request):
-    return render(request, 'accounts.html', _base_context(request))
-
-# ==========================================
-# 6. ĐƠN VỊ & QUY ĐỔI (UNITS - AJAX VERSION)
-# ==========================================
 @login_required
 def units_view(request):
-    """Trang hiển thị danh sách Đơn vị quy đổi."""
-    
-    # 1. Lấy toàn bộ quy đổi từ DB và chuyển sang List dict để hóa JSON
-    unit_list = ProductUnits.objects.select_related('product').all()
-    units_data = []
-    for u in unit_list:
-        units_data.append({
-            'id': str(u.id),
-            'unit_name': u.unit_name,
-            'conversion_rate': float(u.conversion_rate),
-            'product_id': str(u.product.id),
-            'product_name': u.product.name,
-            'base_unit': u.product.base_unit
-        })
+    """Trang hiển thị Đơn vị quy đổi (AJAX)"""
+    # Lấy dữ liệu thực từ DB để truyền cho giao diện AJAX
+    unit_list = ProductUnit.objects.select_related('product').all()
+    units_data = [{
+        'id': str(u.id),
+        'unit_name': u.unit_name,
+        'conversion_rate': float(u.conversion_rate),
+        'product_name': u.product.name,
+        'base_unit': u.product.base_unit
+    } for u in unit_list]
 
-    # 2. Lấy toàn bộ Sản phẩm để đổ vào Dropdown trong Modal
-    product_list = Products.objects.all()
-    products_data = []
-    for p in product_list:
-        products_data.append({
-            'id': str(p.id),
-            'name': p.name,
-            'base_unit': p.base_unit
-        })
+    product_list = Product.objects.all()
+    Product_data = [{
+        'id': str(p.id),
+        'name': p.name,
+        'base_unit': p.base_unit
+    } for p in product_list]
 
     context = {
         **_base_context(request),
         'units_json': units_data,
-        'products_json': products_data,
+        'Product_json': Product_data,
     }
     return render(request, 'units.html', context)
-
-@login_required
-@require_POST
-def api_save_unit(request):
-    """API lưu hoặc cập nhật đơn vị quy đổi (Giao diện gọi ngầm)"""
-    try:
-        data = json.loads(request.body)
-        unit_id = data.get('id')
-        product_id = data.get('product_id')
-        unit_name = data.get('unit_name')
-        conversion_rate = data.get('conversion_rate')
-
-        product = Products.objects.filter(id=product_id).first()
-        if not product:
-            return JsonResponse({'success': False, 'message': 'Sản phẩm không tồn tại!'})
-
-        if unit_id:
-            unit = ProductUnits.objects.filter(id=unit_id).first()
-            if unit:
-                unit.product = product
-                unit.unit_name = unit_name
-                unit.conversion_rate = conversion_rate
-                unit.save()
-            else:
-                return JsonResponse({'success': False, 'message': 'Không tìm thấy đơn vị để sửa!'})
-        else:
-            ProductUnits.objects.create(
-                id=str(uuid.uuid4()), 
-                product=product,
-                unit_name=unit_name,
-                conversion_rate=conversion_rate
-            )
-        return JsonResponse({'success': True})
-    except Exception as e:
-        return JsonResponse({'success': False, 'message': str(e)})
-
-@login_required
-@require_POST
-def api_delete_unit(request, unit_id):
-    """API xóa đơn vị quy đổi (Giao diện gọi ngầm)"""
-    try:
-        unit = ProductUnits.objects.filter(id=unit_id).first()
-        if unit:
-            unit.delete()
-            return JsonResponse({'success': True})
-        return JsonResponse({'success': False, 'message': 'Không tìm thấy đơn vị!'})
-    except Exception as e:
-        return JsonResponse({'success': False, 'message': str(e)})

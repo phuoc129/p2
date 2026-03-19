@@ -1,0 +1,277 @@
+{% extends "base.html" %}
+
+{% block title %}Sản phẩm — TeLiet System{% endblock %}
+{% block breadcrumb %}Sản phẩm{% endblock %}
+{% block nav_products %}active{% endblock %}
+
+{% block extra_css %}
+.product-img { width: 40px; height: 40px; background: var(--surface3); border-radius: 8px; display: flex; align-items:
+center; justify-content: center; }
+.product-info { display: flex; align-items: center; gap: 12px; }
+.badge.stock-ok { background: rgba(34,197,94,0.12); color: var(--success); }
+.badge.stock-low { background: rgba(245,158,11,0.12); color: var(--warning); }
+.badge.stock-out { background: rgba(239,68,68,0.12); color: var(--danger); }
+.modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); z-index: 100;
+display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.2s;
+}
+.modal-backdrop.open { opacity: 1; pointer-events: all; }
+.modal { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; width: 100%; max-width:
+540px; padding: 28px; transform: translateY(16px); transition: transform 0.2s; }
+.modal-backdrop.open .modal { transform: translateY(0); }
+.modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+.modal-title { font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 700; color: var(--text); }
+.modal-close { width: 30px; height: 30px; background: var(--surface2); border: 1px solid var(--border); border-radius:
+7px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--muted2); }
+.field { margin-bottom: 16px; }
+.field-label { display: block; font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase;
+letter-spacing: 1px; margin-bottom: 7px; }
+.field input, .field select, .field textarea { width: 100%; background: var(--surface2); border: 1px solid
+var(--border); border-radius: 8px; padding: 11px 14px; font-family: 'DM Sans', sans-serif; font-size: 13px; color:
+var(--text); outline: none; transition: border-color 0.15s; }
+.field textarea { height: 80px; resize: none; }
+.field input::placeholder, .field textarea::placeholder { color: #3a3e47; }
+.field input:focus, .field select:focus, .field textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px
+rgba(232,164,39,0.08); }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.modal-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px; padding-top: 20px; border-top:
+1px solid var(--border); }
+.confirm-icon { width: 52px; height: 52px; border-radius: 12px; display: flex; align-items: center; justify-content:
+center; margin: 0 auto 16px; }
+.confirm-icon.warn { background: rgba(239,68,68,0.1); color: var(--danger); }
+.confirm-title { font-family: 'Syne', sans-serif; font-size: 17px; font-weight: 700; text-align: center; margin-bottom:
+8px; }
+.confirm-desc { font-size: 13px; color: var(--muted); text-align: center; line-height: 1.6; }
+.toast-container { position: fixed; bottom: 28px; right: 28px; z-index: 200; display: flex; flex-direction: column; gap:
+10px; }
+.toast { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 16px; display:
+flex; align-items: center; gap: 10px; font-size: 13px; box-shadow: 0 8px 24px rgba(0,0,0,0.4); transform:
+translateX(80px); opacity: 0; transition: all 0.3s; min-width: 260px; }
+.toast.show { transform: translateX(0); opacity: 1; }
+.toast.success { border-left: 3px solid var(--success); }
+.toast.danger { border-left: 3px solid var(--danger); }
+.toast-icon { width: 20px; height: 20px; flex-shrink: 0; }
+.toast.success .toast-icon { color: var(--success); }
+.toast.danger .toast-icon { color: var(--danger); }
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Danh mục vật liệu</h1>
+        <p class="page-sub">Quản lý thông tin sản phẩm, giá bán và tồn kho</p>
+    </div>
+    <button class="btn btn-primary" onclick="openModal('create')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="12" y1="5" x2="12" y2="19" />
+            <line x1="5" y1="12" x2="19" y2="12" />
+        </svg>
+        Thêm vật liệu mới
+    </button>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <span class="card-title">Danh sách vật liệu</span>
+        <div class="search-wrap">
+            <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+            <input class="search-input" placeholder="Tìm kiếm vật liệu...">
+        </div>
+    </div>
+    <table>
+        <thead>
+            <tr>
+                <th>Vật liệu</th>
+                <th>Danh mục</th>
+                <th>Đơn vị</th>
+                <th>Giá bán</th>
+                <th>Tồn kho</th>
+                <th>Trạng thái</th>
+                <th style="text-align:right">Thao tác</th>
+            </tr>
+        </thead>
+        <tbody id="product-list"></tbody>
+    </table>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+    <div class="modal-backdrop" id="modal-confirm">
+        <form class="modal" id="delete-form" method="POST" style="max-width:400px;text-align:center;">
+            {% csrf_token %}
+            <div class="confirm-icon warn"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg></div>
+            <div class="confirm-title" id="confirm-title">Xác nhận xóa sản phẩm</div>
+            <p class="confirm-desc" id="confirm-desc">Sản phẩm này sẽ bị xóa vĩnh viễn khỏi hệ thống.</p>
+            <div class="modal-footer" style="justify-content:center;">
+                <button type="button" class="btn btn-ghost" onclick="closeConfirm()">Hủy</button>
+                <button type="submit" class="btn btn-danger">Xóa sản phẩm</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="toast-container" id="toast-container">
+        {% if messages %}
+            {% for message in messages %}
+                <div class="toast show {% if message.tags == 'error' %}danger{% else %}success{% endif %}">
+                    {% if message.tags == 'error' %}
+                        <svg class="toast-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    {% else %}
+                        <svg class="toast-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                    {% endif %}
+                    <span>{{ message }}</span>
+                </div>
+            {% endfor %}
+        {% endif %}
+    </div>
+
+    <div class="modal-backdrop" id="modal-form">
+        <form class="modal" id="product-form" method="POST" action="{% url 'product:product_create' %}">
+            {% csrf_token %}
+            <div class="modal-header">
+                <span class="modal-title" id="modal-title">Thêm vật liệu mới</span>
+                <button type="button" class="modal-close" onclick="closeModal()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+            </div>
+            
+            <div class="field">
+                <label class="field-label">Tên vật liệu *</label>
+                <input type="text" id="f-name" name="name" required placeholder="Ví dụ: Xi măng Hà Tiên PCB40">
+            </div>
+            
+            <div class="form-row">
+                <div class="field">
+                    <label class="field-label">Danh mục *</label>
+                    <select id="f-category" name="category" required>
+                        <option value="">Chọn danh mục</option>
+                        {% for cat in categories %}
+                            <option value="{{ cat.id }}">{{ cat.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="field">
+                    <label class="field-label">Đơn vị cơ sở *</label>
+                    <input type="text" id="f-unit" name="base_unit" required placeholder="Bao, Cây, Khối...">
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="field">
+                    <label class="field-label">Giá bán (VNĐ) *</label>
+                    <input type="number" id="f-price" name="base_price" required placeholder="0">
+                </div>
+                <div class="field">
+                    <label class="field-label">Tồn tối thiểu</label>
+                    <input type="number" id="f-min-stock" placeholder="10">
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn btn-ghost" onclick="closeModal()">Hủy</button>
+                <button type="submit" class="btn btn-primary" id="btn-submit">Lưu thông tin</button>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        // 1. "Bơm" dữ liệu thật từ Django vào biến mảng JS của bạn
+        let products = [
+            {% for p in products %}
+            { 
+                id: '{{ p.id }}', // Lưu ý: ID là UUID nên phải nằm trong nháy đơn
+                name: '{{ p.name|escapejs }}', 
+                categoryId: '{{ p.category_id|default_if_none:"" }}',
+                category: '{{ p.category.name|default:"Chưa phân loại"|escapejs }}', 
+                unit: '{{ p.base_unit|escapejs }}', 
+                price: {{ p.base_price|stringformat:"f"|default:"0" }}, 
+                stock: 0, 
+                minStock: 10 
+            },
+            {% endfor %}
+        ];
+
+        let editId = null;
+
+        function renderProducts() {
+            document.getElementById('product-list').innerHTML = products.map(p => {
+                const sc = p.stock===0 ? 'stock-out' : p.stock<=p.minStock ? 'stock-low' : 'stock-ok';
+                const st = p.stock===0 ? 'Hết hàng' : p.stock<=p.minStock ? 'Sắp hết' : 'Còn hàng';
+                // Chú ý: Truyền tham số ID dạng chuỗi (thêm nháy đơn '${p.id}')
+                return `<tr>
+                    <td class="bold"><div class="product-info"><div class="product-img"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></div>${p.name}</div></td>
+                    <td>${p.category}</td><td>${p.unit}</td>
+                    <td class="bold">${Number(p.price).toLocaleString()}đ</td>
+                    <td class="bold">${p.stock}</td>
+                    <td><span class="badge ${sc}">${st}</span></td>
+                    <td style="text-align:right">
+                        <button class="action-btn" onclick="openModal('edit', '${p.id}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+                        <button class="action-btn" onclick="deleteProduct('${p.id}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M9 6V4h6v2"/></svg></button>
+                    </td></tr>`;
+            }).join('');
+            
+            if(products.length === 0) {
+                document.getElementById('product-list').innerHTML = `<tr><td colspan="7" style="text-align:center; padding: 30px; color: var(--muted);">Chưa có sản phẩm nào trong hệ thống.</td></tr>`;
+            }
+        }
+
+        function openModal(type, id) {
+        editId = id || null;
+        const form = document.getElementById('product-form');
+        const title = document.getElementById('modal-title');
+        const btnSubmit = document.getElementById('btn-submit');
+        
+        if (type === 'create') {
+            title.textContent = 'Thêm vật liệu mới';
+            btnSubmit.textContent = 'Lưu thông tin';
+            form.reset();
+            // URL chuẩn từ Django cho việc tạo mới
+            form.action = "{% url 'product:product_create' %}";
+        } else {
+            const p = products.find(x => x.id === id);
+            title.textContent = 'Chỉnh sửa vật liệu';
+            btnSubmit.textContent = 'Cập nhật';
+            
+            // Đổ dữ liệu cũ vào Form
+            document.getElementById('f-name').value = p.name; 
+            document.getElementById('f-category').value = p.categoryId;
+            document.getElementById('f-unit').value = p.unit; 
+            document.getElementById('f-price').value = p.price;
+            
+            // DÙNG MẸO UUID GIẢ: Nhờ Django sinh URL Update chuẩn, sau đó JS thay ID thật vào
+            let updateUrl = "{% url 'product:product_update' pk='00000000-0000-0000-0000-000000000000' %}";
+            form.action = updateUrl.replace('00000000-0000-0000-0000-000000000000', id);
+        }
+        document.getElementById('modal-form').classList.add('open');
+    }
+    
+    function closeModal() { 
+        document.getElementById('modal-form').classList.remove('open'); 
+    }
+
+    function deleteProduct(id) {
+        const p = products.find(x => x.id === id);
+        document.getElementById('confirm-title').textContent = 'Xác nhận xóa sản phẩm';
+        document.getElementById('confirm-desc').textContent = `Sản phẩm "${p.name}" sẽ bị xóa vĩnh viễn khỏi hệ thống. Thao tác này không thể hoàn tác.`;
+        
+        // DÙNG MẸO UUID GIẢ: Nhờ Django sinh URL Delete chuẩn, sau đó JS thay ID thật vào
+        let deleteUrl = "{% url 'product:product_delete' pk='00000000-0000-0000-0000-000000000000' %}";
+        document.getElementById('delete-form').action = deleteUrl.replace('00000000-0000-0000-0000-000000000000', id);
+        
+        document.getElementById('modal-confirm').classList.add('open');
+    }
+    
+    function closeConfirm() { 
+        document.getElementById('modal-confirm').classList.remove('open'); 
+    }
+
+        // Ẩn thông báo tự động (Toast) của Django sau 3.5 giây
+        setTimeout(() => {
+            document.querySelectorAll('.toast').forEach(t => {
+                t.classList.remove('show');
+                setTimeout(() => t.remove(), 300);
+            });
+        }, 3500);
+
+        renderProducts();
+    </script>
+{% endblock %}
