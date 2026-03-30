@@ -32,6 +32,7 @@ INSTALLED_APPS = [
     'core',
     'apps.product',
     'apps.authentication',
+    'apps.order',
 ]
 
 MIDDLEWARE = [

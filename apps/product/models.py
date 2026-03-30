@@ -54,164 +54,164 @@ class ProductUnit(models.Model):
         return f"{self.product.name} - {self.unit_name}"
 
 
-# ============================================================
-# 4. KHO
-# ============================================================
-class Warehouse(models.Model):
-    id          = models.BigAutoField(primary_key=True)
-    name        = models.CharField(max_length=100)
-    location    = models.CharField(max_length=255, null=True, blank=True)
-    description = models.TextField(null=True, blank=True)
+# # ============================================================
+# # 4. KHO
+# # ============================================================
+# class Warehouse(models.Model):
+#     id          = models.BigAutoField(primary_key=True)
+#     name        = models.CharField(max_length=100)
+#     location    = models.CharField(max_length=255, null=True, blank=True)
+#     description = models.TextField(null=True, blank=True)
 
-    class Meta:
-        db_table = 'warehouses'
+#     class Meta:
+#         db_table = 'warehouses'
 
-    def __str__(self):
-        return self.name
-
-
-# ============================================================
-# 5. TỒN KHO
-# ============================================================
-class Inventory(models.Model):
-    id                = models.BigAutoField(primary_key=True)
-    product           = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='inventories')
-    warehouse         = models.ForeignKey(Warehouse, on_delete=models.CASCADE, related_name='inventories')
-    quantity_on_hand  = models.DecimalField(max_digits=15, decimal_places=2, default=0)
-    quantity_reserved = models.DecimalField(max_digits=15, decimal_places=2, default=0)
-    min_stock_level   = models.DecimalField(max_digits=15, decimal_places=2, default=0)
-    last_updated      = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        db_table = 'inventories'
-        unique_together = ('product', 'warehouse')
-
-    def __str__(self):
-        return f"{self.product.name} @ {self.warehouse.name}"
+#     def __str__(self):
+#         return self.name
 
 
-# ============================================================
-# 6. ĐƠN HÀNG BÁN
-# ============================================================
-class SalesOrder(models.Model):
-    STATUS_CHOICES = [
-        ('Pending',    'Chờ xử lý'),
-        ('Processing', 'Đang xử lý'),
-        ('Completed',  'Hoàn thành'),
-        ('Cancelled',  'Đã huỷ'),
-    ]
+# # ============================================================
+# # 5. TỒN KHO
+# # ============================================================
+# class Inventory(models.Model):
+#     id                = models.BigAutoField(primary_key=True)
+#     product           = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='inventories')
+#     warehouse         = models.ForeignKey(Warehouse, on_delete=models.CASCADE, related_name='inventories')
+#     quantity_on_hand  = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+#     quantity_reserved = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+#     min_stock_level   = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+#     last_updated      = models.DateTimeField(auto_now=True)
 
-    id            = models.BigAutoField(primary_key=True)
-    order_code    = models.CharField(max_length=20, unique=True)
-    customer_name = models.CharField(max_length=100)
-    created_by    = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.PROTECT,
-        related_name='sales_orders'
-    )
-    order_date    = models.DateTimeField(auto_now_add=True)
-    total_amount  = models.DecimalField(max_digits=15, decimal_places=2, default=0)
-    status        = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Pending')
+#     class Meta:
+#         db_table = 'inventories'
+#         unique_together = ('product', 'warehouse')
 
-    class Meta:
-        db_table = 'sales_orders'
-
-    def __str__(self):
-        return f"{self.order_code} - {self.customer_name}"
+#     def __str__(self):
+#         return f"{self.product.name} @ {self.warehouse.name}"
 
 
-# ============================================================
-# 7. CÔNG NỢ KHÁCH HÀNG
-# ============================================================
-class CustomerDebt(models.Model):
-    STATUS_CHOICES = [
-        ('Pending', 'Chưa thanh toán'),
-        ('Paid',    'Đã thanh toán'),
-    ]
+# # ============================================================
+# # 6. ĐƠN HÀNG BÁN
+# # ============================================================
+# class SalesOrder(models.Model):
+#     STATUS_CHOICES = [
+#         ('Pending',    'Chờ xử lý'),
+#         ('Processing', 'Đang xử lý'),
+#         ('Completed',  'Hoàn thành'),
+#         ('Cancelled',  'Đã huỷ'),
+#     ]
 
-    id               = models.BigAutoField(primary_key=True)
-    sales_order      = models.ForeignKey(SalesOrder, on_delete=models.CASCADE, related_name='debts')
-    customer_name    = models.CharField(max_length=100)
-    remaining_amount = models.DecimalField(max_digits=15, decimal_places=2, default=0)
-    due_date         = models.DateTimeField(null=True, blank=True)
-    status           = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Pending')
+#     id            = models.BigAutoField(primary_key=True)
+#     order_code    = models.CharField(max_length=20, unique=True)
+#     customer_name = models.CharField(max_length=100)
+#     created_by    = models.ForeignKey(
+#         settings.AUTH_USER_MODEL, on_delete=models.PROTECT,
+#         related_name='sales_orders'
+#     )
+#     order_date    = models.DateTimeField(auto_now_add=True)
+#     total_amount  = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+#     status        = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Pending')
 
-    class Meta:
-        db_table = 'customer_debts'
+#     class Meta:
+#         db_table = 'sales_orders'
 
-    def __str__(self):
-        return f"{self.customer_name} - còn {self.remaining_amount}"
-
-
-# ============================================================
-# 8. GIAO DỊCH KHO
-# ============================================================
-class WarehouseTransaction(models.Model):
-    TYPE_CHOICES = [
-        ('IMPORT', 'Nhập kho'),
-        ('EXPORT', 'Xuất kho'),
-    ]
-
-    id               = models.BigAutoField(primary_key=True)
-    code             = models.CharField(max_length=20, unique=True)
-    product          = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='transactions')
-    warehouse        = models.ForeignKey(Warehouse, on_delete=models.CASCADE, related_name='transactions')
-    quantity         = models.DecimalField(max_digits=15, decimal_places=2)
-    transaction_type = models.CharField(max_length=20, choices=TYPE_CHOICES)
-    transaction_date = models.DateTimeField(auto_now_add=True)
-    created_by       = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.PROTECT,
-        related_name='warehouse_transactions'
-    )
-
-    class Meta:
-        db_table = 'warehouse_transactions'
-
-    def __str__(self):
-        return f"{self.code} - {self.transaction_type}"
+#     def __str__(self):
+#         return f"{self.order_code} - {self.customer_name}"
 
 
-# ============================================================
-# 9. NHẬT KÝ HỆ THỐNG
-# ============================================================
-class SystemLog(models.Model):
-    id            = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    user          = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
-        related_name='system_logs'
-    )
-    action_type   = models.CharField(max_length=50)
-    target_module = models.CharField(max_length=50)
-    old_value     = models.JSONField(null=True, blank=True)
-    new_value     = models.JSONField(null=True, blank=True)
-    created_at    = models.DateTimeField(auto_now_add=True)
+# # ============================================================
+# # 7. CÔNG NỢ KHÁCH HÀNG
+# # ============================================================
+# class CustomerDebt(models.Model):
+#     STATUS_CHOICES = [
+#         ('Pending', 'Chưa thanh toán'),
+#         ('Paid',    'Đã thanh toán'),
+#     ]
 
-    class Meta:
-        db_table = 'system_logs'
+#     id               = models.BigAutoField(primary_key=True)
+#     sales_order      = models.ForeignKey(SalesOrder, on_delete=models.CASCADE, related_name='debts')
+#     customer_name    = models.CharField(max_length=100)
+#     remaining_amount = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+#     due_date         = models.DateTimeField(null=True, blank=True)
+#     status           = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Pending')
 
-    def __str__(self):
-        return f"{self.action_type} - {self.target_module} - {self.created_at}"
+#     class Meta:
+#         db_table = 'customer_debts'
+
+#     def __str__(self):
+#         return f"{self.customer_name} - còn {self.remaining_amount}"
 
 
-# ============================================================
-# 10. NHẬT KÝ XUẤT BÁO CÁO
-# ============================================================
-class ExportLog(models.Model):
-    FORMAT_CHOICES = [
-        ('EXCEL', 'Excel'),
-        ('PDF',   'PDF'),
-    ]
+# # ============================================================
+# # 8. GIAO DỊCH KHO
+# # ============================================================
+# class WarehouseTransaction(models.Model):
+#     TYPE_CHOICES = [
+#         ('IMPORT', 'Nhập kho'),
+#         ('EXPORT', 'Xuất kho'),
+#     ]
 
-    id          = models.BigAutoField(primary_key=True)
-    user        = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
-        related_name='export_logs'
-    )
-    report_name = models.CharField(max_length=100)
-    format      = models.CharField(max_length=10, choices=FORMAT_CHOICES)
-    export_time = models.DateTimeField(auto_now_add=True)
+#     id               = models.BigAutoField(primary_key=True)
+#     code             = models.CharField(max_length=20, unique=True)
+#     product          = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='transactions')
+#     warehouse        = models.ForeignKey(Warehouse, on_delete=models.CASCADE, related_name='transactions')
+#     quantity         = models.DecimalField(max_digits=15, decimal_places=2)
+#     transaction_type = models.CharField(max_length=20, choices=TYPE_CHOICES)
+#     transaction_date = models.DateTimeField(auto_now_add=True)
+#     created_by       = models.ForeignKey(
+#         settings.AUTH_USER_MODEL, on_delete=models.PROTECT,
+#         related_name='warehouse_transactions'
+#     )
 
-    class Meta:
-        db_table = 'export_logs'
+#     class Meta:
+#         db_table = 'warehouse_transactions'
 
-    def __str__(self):
-        return f"{self.report_name} - {self.format}"
+#     def __str__(self):
+#         return f"{self.code} - {self.transaction_type}"
+
+
+# # ============================================================
+# # 9. NHẬT KÝ HỆ THỐNG
+# # ============================================================
+# class SystemLog(models.Model):
+#     id            = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+#     user          = models.ForeignKey(
+#         settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
+#         related_name='system_logs'
+#     )
+#     action_type   = models.CharField(max_length=50)
+#     target_module = models.CharField(max_length=50)
+#     old_value     = models.JSONField(null=True, blank=True)
+#     new_value     = models.JSONField(null=True, blank=True)
+#     created_at    = models.DateTimeField(auto_now_add=True)
+
+#     class Meta:
+#         db_table = 'system_logs'
+
+#     def __str__(self):
+#         return f"{self.action_type} - {self.target_module} - {self.created_at}"
+
+
+# # ============================================================
+# # 10. NHẬT KÝ XUẤT BÁO CÁO
+# # ============================================================
+# class ExportLog(models.Model):
+#     FORMAT_CHOICES = [
+#         ('EXCEL', 'Excel'),
+#         ('PDF',   'PDF'),
+#     ]
+
+#     id          = models.BigAutoField(primary_key=True)
+#     user        = models.ForeignKey(
+#         settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
+#         related_name='export_logs'
+#     )
+#     report_name = models.CharField(max_length=100)
+#     format      = models.CharField(max_length=10, choices=FORMAT_CHOICES)
+#     export_time = models.DateTimeField(auto_now_add=True)
+
+#     class Meta:
+#         db_table = 'export_logs'
+
+#     def __str__(self):
+#         return f"{self.report_name} - {self.format}"
