@@ -34,4 +34,7 @@ urlpatterns = [
 
     path('units/', views.units_view, name='units'),
     # path('accounts/', views.accounts_view, name='accounts'),
+
+    # API Xác thực (Theo BM01)
+    path('api/xac-thuc/', include('apps.authentication.urls')),
 ]
