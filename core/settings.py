@@ -33,6 +33,7 @@ INSTALLED_APPS = [
     'apps.product',
     'apps.authentication',
     'apps.order',
+    'apps.warehouse.apps.WarehouseConfig'
 ]
 
 MIDDLEWARE = [

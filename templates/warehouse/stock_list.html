@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+
+{% block title %}Tồn kho — TeLiet System{% endblock %}
+{% block breadcrumb %}Tồn kho{% endblock %}
+{% block nav_stock %}active{% endblock %}
+
+{% block extra_css %}
+.stock-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px;margin-bottom:24px;}
+.stock-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;transition:border-color .2s;}
+.stock-card:hover{border-color:var(--accent);}
+.stock-card.out{border-color:rgba(239,68,68,.3);}
+.stock-card.low{border-color:rgba(245,158,11,.3);}
+.stock-qty{font-family:'Syne',sans-serif;font-size:28px;font-weight:800;line-height:1;margin:8px 0 4px;}
+.stock-qty.ok{color:var(--success);}
+.stock-qty.low{color:var(--warning);}
+.stock-qty.out{color:var(--danger);}
+.stock-product{font-size:14px;font-weight:600;color:var(--text);margin-bottom:2px;}
+.stock-cat{font-size:11px;color:var(--muted);}
+.stock-status{font-size:11px;font-weight:600;margin-top:10px;}
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Tồn kho hiện tại</h1>
+    <p class="page-sub">Cập nhật theo thời gian thực khi nhập/xuất kho</p>
+  </div>
+</div>
+
+<div class="stock-grid">
+  {% for stock in stocks %}
+  {% with qty=stock.quantity %}
+  <div class="stock-card {% if qty == 0 %}out{% elif qty <= 10 %}low{% endif %}">
+    <div class="stock-cat">{{ stock.product.category.name|default:"Chưa phân loại" }}</div>
+    <div class="stock-product">{{ stock.product.name }}</div>
+    <div class="stock-qty {% if qty == 0 %}out{% elif qty <= 10 %}low{% else %}ok{% endif %}">
+      {{ qty|floatformat:"-2" }}
+    </div>
+    <div style="font-size:12px;color:var(--muted2);">{{ stock.product.base_unit }}</div>
+    <div class="stock-status">
+      {% if qty == 0 %}<span style="color:var(--danger);">● Hết hàng</span>
+      {% elif qty <= 10 %}<span style="color:var(--warning);">● Sắp hết</span>
+      {% else %}<span style="color:var(--success);">● Còn hàng</span>{% endif %}
+    </div>
+    <div style="font-size:10px;color:var(--muted);margin-top:6px;">Cập nhật: {{ stock.last_updated|date:"d/m H:i" }}</div>
+  </div>
+  {% endwith %}
+  {% empty %}
+  <div style="grid-column:1/-1;text-align:center;padding:60px;color:var(--muted);">
+    Chưa có dữ liệu tồn kho. Hãy tạo phiếu nhập kho và được kế toán duyệt để cập nhật.
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Table view -->
+<div class="card">
+  <div class="card-header"><span class="card-title">Chi tiết tồn kho</span></div>
+  <table>
+    <thead><tr>
+      <th>Sản phẩm</th><th>Danh mục</th><th>Tồn kho</th><th>Đơn vị</th>
+      <th>Trạng thái</th><th>Cập nhật lúc</th>
+    </tr></thead>
+    <tbody>
+      {% for stock in stocks %}
+      <tr>
+        <td class="bold">{{ stock.product.name }}</td>
+        <td>{{ stock.product.category.name|default:"—" }}</td>
+        <td class="bold">{{ stock.quantity|floatformat:"-2" }}</td>
+        <td>{{ stock.product.base_unit }}</td>
+        <td>
+          {% if stock.quantity == 0 %}
+            <span class="badge cancel">Hết hàng</span>
+          {% elif stock.quantity <= 10 %}
+            <span class="badge processing">Sắp hết</span>
+          {% else %}
+            <span class="badge done">Còn hàng</span>
+          {% endif %}
+        </td>
+        <td>{{ stock.last_updated|date:"d/m/Y H:i" }}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="6" style="text-align:center;padding:32px;color:var(--muted);">Chưa có dữ liệu.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

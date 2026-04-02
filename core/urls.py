@@ -34,4 +34,6 @@ urlpatterns = [
 
     path('units/', views.units_view, name='units'),
     # path('accounts/', views.accounts_view, name='accounts'),
+
+    path('', include('apps.warehouse.urls')),
 ]

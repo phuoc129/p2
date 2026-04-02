@@ -1,0 +1,300 @@
+{% extends "base.html" %}
+
+{% block title %}Đơn hàng xuất kho — TeLiet System{% endblock %}
+{% block breadcrumb %}Xuất kho{% endblock %}
+{% block nav_sales %}active{% endblock %}
+
+{% block extra_css %}
+.status-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:5px;font-size:11px;font-weight:600;}
+.status-badge.CONFIRMED{background:rgba(59,130,246,.12);color:var(--info);}
+.status-badge.WAITING{background:rgba(245,158,11,.12);color:var(--warning);}
+.status-badge.DONE{background:rgba(34,197,94,.12);color:var(--success);}
+.status-badge.CANCELLED{background:rgba(107,114,128,.12);color:var(--muted);}
+.modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(4px);z-index:100;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s;}
+.modal-backdrop.open{opacity:1;pointer-events:all;}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:16px;width:100%;max-width:760px;padding:28px;transform:translateY(16px);transition:transform .2s;max-height:90vh;overflow-y:auto;}
+.modal-backdrop.open .modal{transform:translateY(0);}
+.modal-sm{max-width:480px;}
+.modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;}
+.modal-title{font-family:'Syne',sans-serif;font-size:18px;font-weight:700;color:var(--text);}
+.modal-close{width:30px;height:30px;background:var(--surface2);border:1px solid var(--border);border-radius:7px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--muted2);}
+.field{margin-bottom:16px;}
+.field-label{display:block;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:7px;}
+.field input,.field select,.field textarea{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);outline:none;transition:border-color .15s;}
+.field input:focus,.field select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(232,164,39,.08);}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.modal-footer{display:flex;justify-content:flex-end;gap:10px;margin-top:24px;padding-top:20px;border-top:1px solid var(--border);}
+.items-table{width:100%;border-collapse:collapse;margin-bottom:12px;}
+.items-table th{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);padding:8px 10px;background:var(--surface2);border-bottom:1px solid var(--border);text-align:left;}
+.items-table td{padding:8px 10px;border-bottom:1px solid var(--border);vertical-align:middle;}
+.items-table td input,.items-table td select{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:7px 10px;font-size:13px;color:var(--text);outline:none;width:100%;}
+.items-table td input:focus,.items-table td select:focus{border-color:var(--accent);}
+.stock-indicator{font-size:11px;margin-top:3px;}
+.stock-ok{color:var(--success);}
+.stock-low{color:var(--warning);}
+.stock-out{color:var(--danger);}
+.error-banner{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);border-radius:8px;padding:12px 16px;margin-bottom:16px;display:none;}
+.error-banner.show{display:block;}
+.error-banner li{color:#fca5a5;font-size:13px;margin-bottom:4px;}
+.toast-container{position:fixed;bottom:28px;right:28px;z-index:200;display:flex;flex-direction:column;gap:10px;}
+.toast{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 16px;display:flex;align-items:center;gap:10px;font-size:13px;box-shadow:0 8px 24px rgba(0,0,0,.4);transform:translateX(80px);opacity:0;transition:all .3s;min-width:260px;}
+.toast.show{transform:translateX(0);opacity:1;}
+.toast.success{border-left:3px solid var(--success);}
+.toast.warning{border-left:3px solid var(--warning);}
+.toast.danger{border-left:3px solid var(--danger);}
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Xuất kho — Đơn hàng</h1>
+    <p class="page-sub">Tạo đơn bán hàng và tự động trừ tồn kho</p>
+  </div>
+  {% if user_role == 'SALE' or user_role == 'ADMIN' %}
+  <button class="btn btn-primary" onclick="openCreateOrder()">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    Tạo đơn hàng
+  </button>
+  {% endif %}
+</div>
+
+<div class="card">
+  <table>
+    <thead>
+      <tr>
+        <th>Mã đơn</th>
+        <th>Khách hàng</th>
+        <th>Số lượng SP</th>
+        <th>Ngày tạo</th>
+        <th>Người tạo</th>
+        <th>Trạng thái</th>
+        <th style="text-align:right">Chi tiết</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for order in orders %}
+      <tr>
+        <td class="bold">{{ order.order_code }}</td>
+        <td>{{ order.customer_name }}</td>
+        <td>{{ order.items.count }} SP</td>
+        <td>{{ order.created_at|date:"d/m/Y H:i" }}</td>
+        <td>{{ order.created_by.full_name|default:order.created_by.username }}</td>
+        <td><span class="status-badge {{ order.status }}">{{ order.get_status_display }}</span></td>
+        <td style="text-align:right">
+          <button class="action-btn" onclick="viewOrder('{{ order.id }}')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="7" style="text-align:center;padding:40px;color:var(--muted);">Chưa có đơn hàng nào.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<div class="toast-container" id="toast-container">
+  {% if messages %}{% for message in messages %}
+  <div class="toast show {{ message.tags }}"><span>{{ message }}</span></div>
+  {% endfor %}{% endif %}
+</div>
+
+<!-- ── Modal: Tạo đơn hàng ─────────────────────────────── -->
+<div class="modal-backdrop" id="modal-create">
+  <form class="modal" method="POST" action="{% url 'warehouse:sales_list' %}">
+    {% csrf_token %}
+    <div class="modal-header">
+      <span class="modal-title">Tạo đơn hàng mới</span>
+      <button type="button" class="modal-close" onclick="closeModal('modal-create')">✕</button>
+    </div>
+
+    <div class="form-row">
+      <div class="field">
+        <label class="field-label">Tên khách hàng <span style="color:var(--danger)">*</span></label>
+        <input type="text" name="customer_name" placeholder="Nguyễn Văn A" required>
+      </div>
+      <div class="field">
+        <label class="field-label">Số điện thoại</label>
+        <input type="text" name="customer_phone" placeholder="0901234567">
+      </div>
+    </div>
+    <div class="field">
+      <label class="field-label">Ghi chú</label>
+      <input type="text" name="note" placeholder="Ghi chú thêm (tùy chọn)">
+    </div>
+
+    <!-- Error banner (khi submit và server trả lỗi) -->
+    <div class="error-banner" id="error-banner">
+      <strong style="color:var(--danger);font-size:12px;">⚠ Không đủ tồn kho:</strong>
+      <ul id="error-list" style="margin:8px 0 0 16px;padding:0;"></ul>
+    </div>
+
+    <div style="margin-bottom:12px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+        <span style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">Danh sách sản phẩm</span>
+        <button type="button" class="btn btn-ghost" style="padding:5px 12px;font-size:12px;" onclick="addOrderRow()">+ Thêm dòng</button>
+      </div>
+      <table class="items-table">
+        <thead><tr>
+          <th style="width:40%">Sản phẩm</th>
+          <th style="width:20%">Số lượng</th>
+          <th style="width:14%">Đơn vị</th>
+          <th style="width:18%">Còn trong kho</th>
+          <th style="width:8%"></th>
+        </tr></thead>
+        <tbody id="order-items-body"></tbody>
+      </table>
+    </div>
+
+    <div class="modal-footer">
+      <button type="button" class="btn btn-ghost" onclick="closeModal('modal-create')">Hủy</button>
+      <button type="submit" class="btn btn-primary">Xác nhận đơn hàng</button>
+    </div>
+  </form>
+</div>
+
+<!-- ── Modal: Xem chi tiết đơn ─────────────────────────── -->
+<div class="modal-backdrop" id="modal-view">
+  <div class="modal modal-sm">
+    <div class="modal-header">
+      <span class="modal-title" id="view-title">Chi tiết đơn hàng</span>
+      <button type="button" class="modal-close" onclick="closeModal('modal-view')">✕</button>
+    </div>
+    <div id="view-body"></div>
+  </div>
+</div>
+
+<script>
+const PRODUCTS = {{ products_json|safe }};
+const STOCKS = {{ stocks_json|safe }};
+let orderCount = 0;
+
+const ORDERS = [
+  {% for order in orders %}
+  {
+    id: '{{ order.id }}',
+    code: '{{ order.order_code }}',
+    customer: '{{ order.customer_name|escapejs }}',
+    phone: '{{ order.customer_phone|default:""|escapejs }}',
+    status: '{{ order.status }}',
+    statusLabel: '{{ order.get_status_display }}',
+    createdBy: '{{ order.created_by.full_name|default:order.created_by.username|escapejs }}',
+    createdAt: '{{ order.created_at|date:"d/m/Y H:i" }}',
+    note: '{{ order.note|default:""|escapejs }}',
+    items: [
+      {% for item in order.items.all %}
+      { product: '{{ item.product.name|escapejs }}', unit: '{{ item.product.base_unit|escapejs }}', qty: {{ item.quantity }}, price: {{ item.unit_price }} },
+      {% endfor %}
+    ],
+  },
+  {% endfor %}
+];
+
+function buildProductOpts(selectedId='') {
+  return `<option value="">-- Chọn sản phẩm --</option>` +
+    PRODUCTS.map(p => `<option value="${p.id}" data-unit="${p.base_unit}" ${p.id===selectedId?'selected':''}>${p.name}</option>`).join('');
+}
+
+function addOrderRow() {
+  const i = orderCount;
+  const html = `<tr id="order-row-${i}">
+    <td>
+      <select name="product_id_${i}" onchange="onProductChange(this,${i})">${buildProductOpts()}</select>
+    </td>
+    <td><input type="number" name="quantity_${i}" min="0.01" step="0.01" placeholder="0" oninput="checkStock(${i})" id="qty-${i}"></td>
+    <td><span id="unit-${i}" style="font-size:13px;color:var(--muted2);">—</span></td>
+    <td>
+      <span id="stock-${i}" style="font-size:12px;color:var(--muted);">—</span>
+    </td>
+    <td><button type="button" onclick="this.closest('tr').remove()" style="background:none;border:none;cursor:pointer;color:var(--muted);">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+    </button></td>
+  </tr>`;
+  document.getElementById('order-items-body').insertAdjacentHTML('beforeend', html);
+  orderCount++;
+}
+
+function onProductChange(sel, i) {
+  const opt = sel.options[sel.selectedIndex];
+  document.getElementById(`unit-${i}`).textContent = opt.dataset.unit || '—';
+  checkStock(i);
+}
+
+function checkStock(i) {
+  const sel = document.querySelector(`select[name="product_id_${i}"]`);
+  const qtyEl = document.getElementById(`qty-${i}`);
+  const stockEl = document.getElementById(`stock-${i}`);
+  if (!sel) return;
+  const pid = sel.value;
+  const stock = STOCKS[pid] !== undefined ? STOCKS[pid] : 0;
+  const qty = parseFloat(qtyEl.value) || 0;
+  const opt = sel.options[sel.selectedIndex];
+  const unit = opt.dataset.unit || '';
+
+  if (!pid) { stockEl.textContent = '—'; stockEl.className = 'stock-indicator'; return; }
+
+  if (stock === 0) {
+    stockEl.textContent = `Hết hàng`;
+    stockEl.className = 'stock-indicator stock-out';
+  } else if (qty > stock) {
+    stockEl.textContent = `⚠ Chỉ còn ${stock} ${unit}`;
+    stockEl.className = 'stock-indicator stock-out';
+  } else if (stock <= 10) {
+    stockEl.textContent = `Còn ${stock} ${unit} (sắp hết)`;
+    stockEl.className = 'stock-indicator stock-low';
+  } else {
+    stockEl.textContent = `Còn ${stock} ${unit}`;
+    stockEl.className = 'stock-indicator stock-ok';
+  }
+}
+
+function openCreateOrder() {
+  document.getElementById('order-items-body').innerHTML = '';
+  orderCount = 0;
+  addOrderRow();
+  document.getElementById('modal-create').classList.add('open');
+}
+
+function viewOrder(id) {
+  const o = ORDERS.find(x => x.id === id);
+  if (!o) return;
+  const statusColors = { CONFIRMED:'var(--info)', WAITING:'var(--warning)', DONE:'var(--success)', CANCELLED:'var(--muted)' };
+  let itemsHtml = o.items.map(item => `<tr>
+    <td>${item.product}</td><td>${item.qty} ${item.unit}</td>
+    <td>${item.price ? Number(item.price).toLocaleString()+'đ' : '—'}</td>
+  </tr>`).join('');
+
+  document.getElementById('view-title').textContent = `Đơn ${o.code}`;
+  document.getElementById('view-body').innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+      <div><span style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">Khách hàng</span>
+        <div style="margin-top:4px;color:var(--text);font-weight:600;">${o.customer}</div>
+        ${o.phone ? `<div style="font-size:12px;color:var(--muted2)">${o.phone}</div>` : ''}
+      </div>
+      <div><span style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">Trạng thái</span>
+        <div style="margin-top:4px;color:${statusColors[o.status]};font-weight:700;">${o.statusLabel}</div>
+      </div>
+      <div><span style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">Người tạo</span>
+        <div style="margin-top:4px;color:var(--text);font-size:13px;">${o.createdBy}</div>
+      </div>
+      <div><span style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">Ngày tạo</span>
+        <div style="margin-top:4px;color:var(--text);font-size:13px;">${o.createdAt}</div>
+      </div>
+    </div>
+    ${o.note ? `<div style="margin-bottom:14px;font-size:13px;color:var(--muted2);">📝 ${o.note}</div>` : ''}
+    <table class="items-table">
+      <thead><tr><th>Sản phẩm</th><th>Số lượng</th><th>Đơn giá</th></tr></thead>
+      <tbody>${itemsHtml || '<tr><td colspan="3" style="text-align:center;color:var(--muted);padding:16px">Trống</td></tr>'}</tbody>
+    </table>`;
+  document.getElementById('modal-view').classList.add('open');
+}
+
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+setTimeout(() => {
+  document.querySelectorAll('.toast').forEach(t => { t.classList.remove('show'); setTimeout(()=>t.remove(),300); });
+}, 4000);
+</script>
+{% endblock %}
