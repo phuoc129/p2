@@ -3,9 +3,12 @@ from django.shortcuts import render, redirect
 from django.views import View
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib import messages
+from django.utils import timezone
+from django.db.models import Q, Sum
 
 from apps.product.models import Product
 from .services import SalesOrderService, CustomerDebtService
+from .models import SalesOrder, SalesOrderItem, CustomerDebt
 
 
 def _products_json():
@@ -46,6 +49,28 @@ def _parse_items_from_post(post_data):
     return items
 
 
+def _get_sales_order_stats():
+    """Lấy thống kê đơn hàng"""
+    today = timezone.now().date()
+    return {
+        'total_orders': SalesOrder.objects.count(),
+        'pending_orders': SalesOrder.objects.filter(status='WAITING').count(),
+        'total_items': SalesOrderItem.objects.aggregate(total=Sum('quantity'))['total'] or 0,
+        'today_transactions': SalesOrder.objects.filter(created_at__date=today).count(),
+    }
+
+
+def _get_debt_stats():
+    """Lấy thống kê công nợ"""
+    today = timezone.now().date()
+    return {
+        'total_orders': SalesOrder.objects.count(),
+        'pending_orders': SalesOrder.objects.filter(status='WAITING').count(),
+        'total_debt': CustomerDebt.objects.aggregate(total=Sum('remaining_amount'))['total'] or 0,
+        'today_transactions': CustomerDebt.objects.filter(created_at__date=today).count(),
+    }
+
+
 class SalesOrderListView(LoginRequiredMixin, View):
     """Danh sách đơn hàng — Sale tạo, mọi người xem"""
 
@@ -61,11 +86,21 @@ class SalesOrderListView(LoginRequiredMixin, View):
             orders = service.get_all()
 
         status_filter = request.GET.get('status', '')
+        search_query = request.GET.get('search', '')
+
         if status_filter:
             orders = orders.filter(status=status_filter)
 
+        if search_query:
+            from django.db.models import Q
+            orders = orders.filter(
+                Q(customer_name__icontains=search_query) |
+                Q(order_code__icontains=search_query)
+            )
+
         products_data = _products_json()
         stocks_data = _stocks_json()
+        stats = _get_sales_order_stats()
 
         return render(request, 'order/sales_order_list.html', {  # ← đúng path
             'orders': orders,
@@ -73,6 +108,8 @@ class SalesOrderListView(LoginRequiredMixin, View):
             'stocks_json': json.dumps(stocks_data),
             'user_role': user.role,
             'status_filter': status_filter,
+            'search_query': search_query,
+            'stats': stats,
         })
 
     def post(self, request):
@@ -119,11 +156,14 @@ class CustomerDebtListView(LoginRequiredMixin, View):
         search = request.GET.get('search', '')
 
         debts = service.get_all(status=status_filter or None, search=search or None)
+        stats = _get_debt_stats()
 
         return render(request, 'order/customer_debt_list.html', {  # ← đúng path
             'debts': debts,
             'status_filter': status_filter,
+            'search_query': search,
             'user_role': request.user.role,
+            'stats': stats,
         })
 
     def post(self, request):

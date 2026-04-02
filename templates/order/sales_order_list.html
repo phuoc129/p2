@@ -13,6 +13,18 @@
 .filter-tabs{display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;}
 .filter-tab{padding:6px 16px;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--border);background:var(--surface);color:var(--muted2);text-decoration:none;transition:all .15s;}
 .filter-tab:hover,.filter-tab.active{background:rgba(232,164,39,.12);border-color:rgba(232,164,39,.3);color:var(--accent);}
+.search-form{display:flex;align-items:center;gap:8px;}
+.search-form input{padding:8px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;font-size:13px;color:var(--text);outline:none;transition:border-color .15s;width:320px;}
+.search-form input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(232,164,39,.08);}
+.search-form button{padding:8px 16px;background:var(--accent);color:black;border:none;border-radius:8px;font-weight:600;cursor:pointer;transition:all .15s;}
+.search-form button:hover{opacity:1;filter:brightness(1.15);box-shadow:0 2px 8px rgba(232,164,39,.3);}
+.filter-search-row{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;margin-bottom:20px;}
+.filter-search-row .filter-tabs{margin:0;}
+.filter-search-row .search-form{margin:0;}
+.stats-bar{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;margin-bottom:24px;}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:20px;text-align:center;}
+.stat-label{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;}
+.stat-value{font-size:32px;font-weight:700;color:var(--accent);font-family:'Syne',sans-serif;}
 .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(4px);z-index:100;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s;}
 .modal-backdrop.open{opacity:1;pointer-events:all;}
 .modal{background:var(--surface);border:1px solid var(--border);border-radius:16px;width:100%;max-width:760px;padding:28px;transform:translateY(16px);transition:transform .2s;max-height:90vh;overflow-y:auto;}
@@ -58,13 +70,42 @@
   {% endif %}
 </div>
 
-<!-- Filter tabs -->
-<div class="filter-tabs">
+<!-- Stats Bar -->
+<div class="stats-bar">
+  <div class="stat-card">
+    <div class="stat-label">Tổng Đơn Hàng</div>
+    <div class="stat-value">{{ stats.total_orders }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Đơn Chờ Xử Lý</div>
+    <div class="stat-value">{{ stats.pending_orders }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Tổng Số SP</div>
+    <div class="stat-value">{{ stats.total_items }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Giao Dịch Hôm Nay</div>
+    <div class="stat-value">{{ stats.today_transactions }}</div>
+  </div>
+</div>
+
+<!-- Filter tabs và Search form -->
+<div class="filter-search-row">
+  <div class="filter-tabs">
   <a href="?status=" class="filter-tab {% if not status_filter %}active{% endif %}">Tất cả</a>
   <a href="?status=CONFIRMED" class="filter-tab {% if status_filter == 'CONFIRMED' %}active{% endif %}">✅ Đã xác nhận</a>
   <a href="?status=WAITING" class="filter-tab {% if status_filter == 'WAITING' %}active{% endif %}">⏳ Chờ lấy hàng</a>
   <a href="?status=DONE" class="filter-tab {% if status_filter == 'DONE' %}active{% endif %}">🎉 Hoàn thành</a>
   <a href="?status=CANCELLED" class="filter-tab {% if status_filter == 'CANCELLED' %}active{% endif %}">❌ Đã hủy</a>
+  </div>
+  <form method="get" class="search-form">
+    <input type="text" name="search" placeholder="Tìm kiếm theo mã đơn hoặc khách hàng..." value="{{ search_query }}" />
+    <button type="submit" style="display:flex;align-items:center;gap:6px;">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      Tìm
+    </button>
+  </form>
 </div>
 
 <div class="card">

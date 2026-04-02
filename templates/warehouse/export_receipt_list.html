@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 
-{% block title %}Nhập kho — TeLiet System{% endblock %}
-{% block breadcrumb %}Nhập kho{% endblock %}
-{% block nav_import %}active{% endblock %}
+{% block title %}Xuất kho — TeLiet System{% endblock %}
+{% block breadcrumb %}Xuất kho{% endblock %}
+{% block nav_export %}active{% endblock %}
 
 {% block extra_css %}
 .status-badge { display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:5px;font-size:11px;font-weight:600; }
@@ -58,21 +58,21 @@
 {% block content %}
 {# Truyền URL pattern vào JS qua data attributes - tránh hardcode #}
 <div id="url-data"
-  data-approve-url="{% url 'warehouse:import_approve' pk='00000000-0000-0000-0000-000000000000' %}"
-  data-reject-url="{% url 'warehouse:import_reject' pk='00000000-0000-0000-0000-000000000000' %}"
-  data-resubmit-url="{% url 'warehouse:import_resubmit' pk='00000000-0000-0000-0000-000000000000' %}"
+  data-approve-url="{% url 'warehouse:export_approve' pk='00000000-0000-0000-0000-000000000000' %}"
+  data-reject-url="{% url 'warehouse:export_reject' pk='00000000-0000-0000-0000-000000000000' %}"
+  data-resubmit-url="{% url 'warehouse:export_resubmit' pk='00000000-0000-0000-0000-000000000000' %}"
   style="display:none">
 </div>
 
 <div class="page-header">
   <div>
-    <h1 class="page-title">Phiếu nhập kho</h1>
-    <p class="page-sub">Quản lý nhập hàng và phê duyệt tồn kho</p>
+    <h1 class="page-title">Phiếu xuất kho</h1>
+    <p class="page-sub">Quản lý xuất hàng và phê duyệt tồn kho</p>
   </div>
   {% if user_role == 'KHO' or user_role == 'ADMIN' %}
   <button class="btn btn-primary" onclick="openCreateModal()">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-    Tạo phiếu nhập
+    Tạo phiếu xuất
   </button>
   {% endif %}
 </div>
@@ -168,7 +168,7 @@
         </td>
       </tr>
       {% empty %}
-      <tr><td colspan="7" style="text-align:center;padding:40px;color:var(--muted);">Chưa có phiếu nhập kho nào.</td></tr>
+      <tr><td colspan="7" style="text-align:center;padding:40px;color:var(--muted);">Chưa có phiếu xuất kho nào.</td></tr>
       {% endfor %}
     </tbody>
   </table>
@@ -182,17 +182,17 @@
   {% endfor %}{% endif %}
 </div>
 
-<!-- ── Modal: Tạo phiếu nhập ── -->
+<!-- ── Modal: Tạo phiếu xuất ── -->
 <div class="modal-backdrop" id="modal-create">
-  <form class="modal" method="POST" action="{% url 'warehouse:import_list' %}" id="create-form">
+  <form class="modal" method="POST" action="{% url 'warehouse:export_list' %}" id="create-form">
     {% csrf_token %}
     <div class="modal-header">
-      <span class="modal-title">Tạo phiếu nhập kho mới</span>
+      <span class="modal-title">Tạo phiếu xuất kho mới</span>
       <button type="button" class="modal-close" onclick="closeModal('modal-create')">✕</button>
     </div>
     <div class="field">
-      <label class="field-label">Ghi chú phiếu</label>
-      <textarea name="note" placeholder="Nhập ghi chú (tùy chọn)..."></textarea>
+      <label class="field-label">Lý do xuất kho</label>
+      <textarea name="note" placeholder="Nhập lý do xuất (tùy chọn)..."></textarea>
     </div>
     <div style="margin-bottom:12px;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
@@ -204,7 +204,7 @@
           <th style="width:38%">Sản phẩm</th>
           <th style="width:18%">Số lượng</th>
           <th style="width:14%">Đơn vị</th>
-          <th style="width:22%">Đơn giá nhập</th>
+          <th style="width:22%">Đơn giá xuất</th>
           <th style="width:8%"></th>
         </tr></thead>
         <tbody id="items-body"></tbody>
@@ -241,7 +241,7 @@
   <form class="modal modal-sm" method="POST" id="reject-form">
     {% csrf_token %}
     <div class="modal-header">
-      <span class="modal-title">Từ chối phiếu nhập</span>
+      <span class="modal-title">Từ chối phiếu xuất</span>
       <button type="button" class="modal-close" onclick="closeModal('modal-reject')">✕</button>
     </div>
     <p style="font-size:13px;color:var(--muted2);margin-bottom:16px;">Phiếu <strong id="reject-code" style="color:var(--text)"></strong></p>
@@ -280,8 +280,8 @@
       <div id="resubmit-rejection-note"></div>
     </div>
     <div class="field">
-      <label class="field-label">Ghi chú phiếu</label>
-      <textarea name="note" id="resubmit-note" placeholder="Ghi chú sau khi sửa..."></textarea>
+      <label class="field-label">Lý do xuất kho</label>
+      <textarea name="note" id="resubmit-note" placeholder="Ghi lý do sau khi sửa..."></textarea>
     </div>
     <div style="margin-bottom:12px;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">

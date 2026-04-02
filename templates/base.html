@@ -261,17 +261,21 @@
 
         <div class="sidebar-section">
             <div class="section-label">Kho hàng</div>
+            <a href="{% url 'warehouse:export_list' %}" class="nav-item {% block nav_export %}{% endblock %}">
+                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="12 19 12 5"/><polyline points="5 12 12 5 19 12"/>
+                </svg>
+                Xuất kho
+            </a>
             <a href="{% url 'warehouse:import_list' %}" class="nav-item {% block nav_import %}{% endblock %}">
                 <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                    <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+                    <polyline points="12 5 12 19"/><polyline points="19 12 12 19 5 12"/>
                 </svg>
                 Nhập kho
             </a>
             <a href="{% url 'warehouse:stock_list' %}" class="nav-item {% block nav_stock %}{% endblock %}">
                 <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <rect x="2" y="3" width="20" height="14" rx="2"/>
-                    <line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
+                    <line x1="16.5" y1="9.4" x2="7.5" y2="4.21"/><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/>
                 </svg>
                 Tồn kho
             </a>
