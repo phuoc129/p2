@@ -1,4 +1,4 @@
-from .repositories import ImportReceiptRepository, ProductStockRepository, SalesOrderRepository
+from .repositories import ImportReceiptRepository, ProductStockRepository
 
 
 class ImportReceiptService:
@@ -88,55 +88,11 @@ class ImportReceiptService:
         return receipt, None
 
 
-class SalesOrderService:
-    def __init__(self):
-        self.repo = SalesOrderRepository()
-
-    def get_all(self):
-        return SalesOrderRepository.get_all()
-
-    def get_by_id(self, order_id):
-        return SalesOrderRepository.get_by_id(order_id)
-
-    def get_by_user(self, user):
-        return SalesOrderRepository.get_by_user(user)
-
-    def create_order(self, customer_name, customer_phone, note, items_data, user):
-        """
-        Sale tạo đơn hàng.
-        Hệ thống tự kiểm tra kho và trừ ngay nếu đủ.
-        Trả về (order, None) hoặc (None, errors_list)
-        """
-        if not customer_name or not customer_name.strip():
-            return None, [{'message': 'Vui lòng nhập tên khách hàng.'}]
-
-        if not items_data:
-            return None, [{'message': 'Đơn hàng phải có ít nhất 1 sản phẩm.'}]
-
-        cleaned_items = []
-        for idx, item in enumerate(items_data):
-            if not item.get('product_id'):
-                return None, [{'message': f'Dòng {idx+1}: chưa chọn sản phẩm.'}]
-            try:
-                qty = float(item.get('quantity', 0))
-            except (ValueError, TypeError):
-                return None, [{'message': f'Dòng {idx+1}: số lượng không hợp lệ.'}]
-            if qty <= 0:
-                return None, [{'message': f'Dòng {idx+1}: số lượng phải lớn hơn 0.'}]
-            item['quantity'] = qty
-            cleaned_items.append(item)
-
-        order_data = {
-            'customer_name': customer_name.strip(),
-            'customer_phone': customer_phone.strip() if customer_phone else '',
-            'note': note or '',
-        }
-
-        order, errors = SalesOrderRepository.create_with_stock_check(order_data, cleaned_items, user)
-        return order, errors
-
-    def get_stock_info(self, product_id):
-        return ProductStockRepository.get_stock(product_id)
+class StockService:
+    """Service xem tồn kho — dùng chung"""
 
     def get_all_stocks(self):
         return ProductStockRepository.get_all()
+
+    def get_stock_info(self, product_id):
+        return ProductStockRepository.get_stock(product_id)
