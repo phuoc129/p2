@@ -1,5 +1,5 @@
 from .repositories import SalesOrderRepository, CustomerDebtRepository
-
+from decimal import Decimal
 
 class SalesOrderService:
 
@@ -32,7 +32,7 @@ class SalesOrderService:
             if not item.get('product_id'):
                 return None, [{'message': f'Dòng {idx+1}: chưa chọn sản phẩm.'}]
             try:
-                qty = float(item.get('quantity', 0))
+                qty = Decimal(str(item.get('quantity', 0)))
             except (ValueError, TypeError):
                 return None, [{'message': f'Dòng {idx+1}: số lượng không hợp lệ.'}]
             if qty <= 0:

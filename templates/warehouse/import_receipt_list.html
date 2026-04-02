@@ -93,7 +93,7 @@
         <td>{{ r.total_items }} sản phẩm</td>
         <td>{{ r.created_at|date:"d/m/Y H:i" }}</td>
         <td><span class="status-badge {{ r.status }}">{{ r.get_status_display }}</span></td>
-        <td>{{ r.reviewed_by.full_name|default:r.reviewed_by.username|default:"—" }}</td>
+        <td>{% if r.reviewed_by %}{{ r.reviewed_by.full_name|default:r.reviewed_by.username }}{% else %}—{% endif %}</td>
         <td style="text-align:right">
           <div style="display:flex;gap:8px;justify-content:flex-end;">
             <button class="action-btn" title="Xem chi tiết" onclick="viewReceipt('{{ r.id }}')">
@@ -285,16 +285,21 @@ const RECEIPTS = [
     code: '{{ r.receipt_code }}',
     status: '{{ r.status }}',
     statusLabel: '{{ r.get_status_display }}',
-    createdBy: '{{ r.created_by.full_name|default:r.created_by.username|escapejs }}',
+    createdBy: '{% if r.created_by %}{{ r.created_by.full_name|default:r.created_by.username|escapejs }}{% endif %}',
     createdAt: '{{ r.created_at|date:"d/m/Y H:i" }}',
     note: '{{ r.note|default:""|escapejs }}',
     rejectionNote: '{{ r.rejection_note|default:""|escapejs }}',
-    reviewedBy: '{{ r.reviewed_by.full_name|default:r.reviewed_by.username|default:""|escapejs }}',
-    reviewedAt: '{{ r.reviewed_at|date:"d/m/Y H:i"|default:"" }}',
+    reviewedBy: '{% if r.reviewed_by %}{{ r.reviewed_by.full_name|default:r.reviewed_by.username|escapejs }}{% endif %}',
+    reviewedAt: '{% if r.reviewed_at %}{{ r.reviewed_at|date:"d/m/Y H:i" }}{% endif %}',
     items: [
       {% for item in r.items.all %}
-      { product: '{{ item.product.name|escapejs }}', unit: '{{ item.product.base_unit|escapejs }}',
-        qty: {{ item.quantity }}, price: {{ item.unit_price }}, note: '{{ item.note|default:""|escapejs }}' },
+      {
+        product: '{{ item.product.name|escapejs }}',
+        unit: '{{ item.product.base_unit|escapejs }}',
+        qty: parseFloat('{{ item.quantity }}') || 0,
+        price: parseFloat('{{ item.unit_price }}') || 0,
+        note: '{{ item.note|default:""|escapejs }}'
+      },
       {% endfor %}
     ],
   },

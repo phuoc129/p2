@@ -1,6 +1,7 @@
 from django.db import transaction
 from django.db.models import Q
 from .models import SalesOrder, SalesOrderItem, CustomerDebt
+from decimal import Decimal
 
 
 class SalesOrderRepository:
@@ -99,7 +100,7 @@ class SalesOrderRepository:
                 product_id=item['product_id'],
                 defaults={'quantity': 0}
             )
-            stock.quantity -= item['quantity']
+            stock.quantity -= Decimal(str(item['quantity']))
             stock.save()
 
         SalesOrderItem.objects.bulk_create(item_instances)
