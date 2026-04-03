@@ -1,6 +1,7 @@
 import uuid
 from django.db import models
 from django.conf import settings
+from django.core.validators import MinValueValidator, MinLengthValidator, URLValidator
 
 
 # ============================================================
@@ -8,7 +9,12 @@ from django.conf import settings
 # ============================================================
 class Category(models.Model):
     id   = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    name = models.CharField(max_length=255, unique=True)
+    name = models.CharField(
+        max_length=255,
+        unique=True,
+        validators=[MinLengthValidator(2)],
+        help_text="Tên danh mục, tối thiểu 2 ký tự"
+    )
 
     class Meta:
         db_table = 'categories'
@@ -22,10 +28,31 @@ class Category(models.Model):
 # ============================================================
 class Product(models.Model):
     id         = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    name       = models.CharField(max_length=255, unique=True)
-    base_price = models.DecimalField(max_digits=19, decimal_places=4, default=0)
-    image_url  = models.CharField(max_length=255, null=True, blank=True)
-    base_unit  = models.CharField(max_length=50)
+    name       = models.CharField(
+        max_length=255,
+        unique=True,
+        validators=[MinLengthValidator(2)],
+        help_text="Tên sản phẩm, tối thiểu 2 ký tự"
+    )
+    base_price = models.DecimalField(
+        max_digits=19,
+        decimal_places=4,
+        default=0,
+        validators=[MinValueValidator(0)],
+        help_text="Giá cơ bản, không được âm"
+    )
+    image_url  = models.CharField(
+        max_length=255,
+        null=True,
+        blank=True,
+        validators=[URLValidator()],
+        help_text="URL hình ảnh (phải là URL hợp lệ)"
+    )
+    base_unit  = models.CharField(
+        max_length=50,
+        validators=[MinLengthValidator(1)],
+        help_text="Đơn vị gốc (Bao, Cây, m3...)"
+    )
     category   = models.ForeignKey(
         Category, on_delete=models.SET_NULL,
         null=True, related_name='products'
@@ -44,8 +71,18 @@ class Product(models.Model):
 class ProductUnit(models.Model):
     id              = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     product         = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='units')
-    unit_name       = models.CharField(max_length=100)
-    conversion_rate = models.DecimalField(max_digits=19, decimal_places=4, default=1.0)
+    unit_name       = models.CharField(
+        max_length=100,
+        validators=[MinLengthValidator(1)],
+        help_text="Tên đơn vị (Bao, Cây, m3...)"
+    )
+    conversion_rate = models.DecimalField(
+        max_digits=19,
+        decimal_places=4,
+        default=1.0,
+        validators=[MinValueValidator(0.0001)],
+        help_text="Tỉ lệ chuyển đổi, phải > 0"
+    )
 
     class Meta:
         db_table = 'product_units'

@@ -340,7 +340,7 @@
             {% endfor %}
         {% endif %}
 
-        <form id="login-form" method="POST" novalidate>
+        <form id="login-form" novalidate>
             {% csrf_token %}
             <div class="field">
                 <label class="field-label" for="username">Tên đăng nhập</label>
@@ -375,6 +375,9 @@
                 <span>Đăng nhập</span>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
             </button>
+
+            <!-- Alert message container for form feedback -->
+            <div class="alert" id="form-alert" style="display: none; margin-top: 20px; padding: 12px 16px; border-radius: 8px; font-size: 13px;"></div>
         </form>
 
         <div class="form-footer">
@@ -401,20 +404,153 @@
             }
         }
 
-        document.getElementById('login-form').addEventListener('submit', function(e) {
-            const userInp = document.getElementById('username').value.trim();
-            const passInp = document.getElementById('password').value.trim();
-
-            if (!userInp || !passInp) {
-                e.preventDefault(); 
-                alert('Vui lòng nhập đầy đủ thông tin!');
+        // ============================================================
+        // LOGIN VỚI TOKEN-BASED AUTH (Lưu token vào localStorage)
+        // ============================================================
+        document.addEventListener('DOMContentLoaded', function() {
+            const loginForm = document.getElementById('login-form');
+            
+            if (!loginForm) {
+                console.error('ERROR: login-form không tìm thấy');
+                return;
             }
-    
-        });
-        ['username','password'].forEach(id => {
-            document.getElementById(id).addEventListener('input', function() {
-                this.classList.remove('error');
-                document.getElementById(id+'-err').classList.remove('show');
+            
+            loginForm.addEventListener('submit', async function(e) {
+                console.log('Form submit event fired');
+                e.preventDefault();
+                
+                const userInput = document.getElementById('username').value.trim();
+                const passInput = document.getElementById('password').value.trim();
+                const submitBtn = document.getElementById('submit-btn');
+                
+                console.log('Username:', userInput);
+                console.log('Password:', passInput ? '***' : 'empty');
+                
+                // Validate
+                if (!userInput || !passInput) {
+                    showAlert('Vui lòng nhập đầy đủ thông tin', 'error');
+                    return;
+                }
+                
+                // Loading state
+                submitBtn.classList.add('loading');
+                submitBtn.disabled = true;
+                
+                try {
+                    console.log('Gửi request đến /api/xac-thuc/');
+                    
+                    // Gọi API đăng nhập
+                    const response = await fetch('/api/xac-thuc/', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                        },
+                        body: JSON.stringify({
+                            username: userInput,
+                            password: passInput
+                        })
+                    });
+                    
+                    console.log('Response status:', response.status);
+                    const data = await response.json();
+                    console.log('Response data:', data);
+                    
+                    if (response.ok) {
+                        console.log('Login successful');
+                        
+                        // Lưu tokens vào localStorage
+                        localStorage.setItem('access_token', data.access);
+                        localStorage.setItem('refresh_token', data.refresh);
+                        localStorage.setItem('user_role', data.vaiTro);
+                        localStorage.setItem('user_id', data.userId);
+                        localStorage.setItem('user_name', data.hoTen);
+                        
+                        console.log('Tokens saved to localStorage');
+                        
+                        // Tạo Django session từ access token
+                        console.log('Gửi request tạo session...');
+                        const sessionResponse = await fetch('/api/xac-thuc/create-session/', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                            },
+                            body: JSON.stringify({
+                                access_token: data.access
+                            })
+                        });
+                        
+                        console.log('Session response status:', sessionResponse.status);
+                        
+                        if (sessionResponse.ok) {
+                            console.log('Session created successfully');
+                        } else {
+                            console.warn('Session creation failed, but proceeding with redirect');
+                        }
+                        
+                        // Redirect ngay lập tức (không delay, không show message)
+                        window.location.href = '/dashboard/';
+                    } else {
+                        console.log('Login failed:', data);
+                        const errorMsg = data.detail || data.non_field_errors?.[0] || 'Tên đăng nhập hoặc mật khẩu không đúng';
+                        showAlert(errorMsg, 'error');
+                    }
+                } catch (error) {
+                    console.error('Login error:', error);
+                    showAlert('Lỗi kết nối: ' + error.message, 'error');
+                } finally {
+                    submitBtn.classList.remove('loading');
+                    submitBtn.disabled = false;
+                }
+            });
+            
+            // Hàm hiển thị alert
+            function showAlert(message, type = 'error') {
+                const alertDiv = document.getElementById('form-alert');
+                if (!alertDiv) {
+                    console.error('Alert div not found');
+                    alert(message);
+                    return;
+                }
+                
+                alertDiv.style.display = 'flex';
+                alertDiv.style.alignItems = 'center';
+                alertDiv.style.gap = '10px';
+                
+                if (type === 'success') {
+                    alertDiv.style.backgroundColor = 'rgba(34, 197, 94, 0.15)';
+                    alertDiv.style.color = '#22c55e';
+                    alertDiv.style.borderLeft = '4px solid #22c55e';
+                } else {
+                    alertDiv.style.backgroundColor = 'rgba(239, 68, 68, 0.15)';
+                    alertDiv.style.color = '#ef4444';
+                    alertDiv.style.borderLeft = '4px solid #ef4444';
+                }
+                
+                alertDiv.innerHTML = `
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink: 0;">
+                        <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                    </svg>
+                    <span>${message}</span>
+                `;
+                
+                console.log('Alert displayed:', message);
+            }
+            
+            // Clear input error styling khi user nhập
+            ['username','password'].forEach(id => {
+                const input = document.getElementById(id);
+                if (input) {
+                    input.addEventListener('input', function() {
+                        this.classList.remove('error');
+                        const errDiv = document.getElementById(id+'-err');
+                        if (errDiv) errDiv.classList.remove('show');
+                        // Hide alert when user starts typing
+                        const alertDiv = document.getElementById('form-alert');
+                        if (alertDiv) alertDiv.style.display = 'none';
+                    });
+                }
             });
         });
     </script>
