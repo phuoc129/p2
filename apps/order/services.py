@@ -3,6 +3,14 @@ from decimal import Decimal
 
 class SalesOrderService:
 
+    # Luồng trạng thái HỢP LỆ — chỉ đi 1 chiều, không quay lại
+    VALID_TRANSITIONS = {
+        'CONFIRMED': ['WAITING', 'CANCELLED'],
+        'WAITING':   ['DONE', 'CANCELLED'],
+        'DONE':      [],
+        'CANCELLED': [],
+    }
+
     def __init__(self):
         self.repo = SalesOrderRepository()
 
@@ -49,12 +57,53 @@ class SalesOrderService:
         order, errors = SalesOrderRepository.create_with_items(order_data, cleaned_items, user)
         return order, errors
 
-    def update_status(self, order_id, status):
+    def update_status(self, order_id, new_status, updated_by=None):
         order = SalesOrderRepository.get_by_id(order_id)
         if not order:
             return False, 'Không tìm thấy đơn hàng.'
-        SalesOrderRepository.update_status(order, status)
+
+        # Kiểm tra luồng hợp lệ
+        allowed = self.VALID_TRANSITIONS.get(order.status, [])
+        if new_status not in allowed:
+            status_labels = {
+                'CONFIRMED': 'Đã xác nhận',
+                'WAITING': 'Chờ lấy hàng',
+                'DONE': 'Hoàn thành',
+                'CANCELLED': 'Đã hủy',
+            }
+            current_label = status_labels.get(order.status, order.status)
+            new_label = status_labels.get(new_status, new_status)
+            return False, f'Không thể chuyển từ "{current_label}" sang "{new_label}".'
+
+        SalesOrderRepository.update_status(order, new_status)
+
+        # Khi chuyển sang "Chờ lấy hàng" → tự động tạo phiếu xuất kho
+        if new_status == 'WAITING' and updated_by is not None:
+            self._create_export_receipt_for_order(order, updated_by)
+
         return True, 'Cập nhật trạng thái thành công.'
+
+    def _create_export_receipt_for_order(self, order, user):
+        """Tạo phiếu xuất kho tự động từ đơn hàng khi chuyển sang Chờ lấy hàng"""
+        from apps.warehouse.repositories import ExportReceiptRepository
+        items_data = [
+            {
+                'product_id': str(item.product_id),
+                'quantity': float(item.quantity),
+                'unit_price': float(item.unit_price),
+                'note': f'Đơn hàng {order.order_code}',
+            }
+            for item in order.items.select_related('product').all()
+        ]
+        receipt_data = {
+            'note': f'Xuất hàng cho đơn {order.order_code} — KH: {order.customer_name}',
+        }
+        try:
+            ExportReceiptRepository.create_with_items(receipt_data, items_data, user)
+        except Exception as e:
+            # Không block luồng chính nếu tạo phiếu thất bại
+            import logging
+            logging.getLogger(__name__).error(f'Lỗi tạo phiếu xuất cho đơn {order.order_code}: {e}')
 
 
 class CustomerDebtService:
