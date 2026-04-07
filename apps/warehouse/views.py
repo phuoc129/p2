@@ -92,17 +92,19 @@ class ImportReceiptListView(LoginRequiredMixin, View):
         products_data = _products_json()
         stats = _get_import_receipt_stats()
 
+        user_role = 'ADMIN' if user.is_superuser else user.role
+
         return render(request, 'warehouse/import_receipt_list.html', {
             'receipts': receipts,
             'products_json': json.dumps(products_data, ensure_ascii=False),
             'status_filter': status_filter,
             'search_query': search_query,
-            'user_role': user.role,
+            'user_role': user_role,
             'stats': stats,
         })
 
     def post(self, request):
-        if request.user.role not in ('KHO', 'ADMIN'):
+        if request.user.role not in ('KHO', 'ADMIN') and not request.user.is_superuser:
             messages.error(request, 'Bạn không có quyền tạo phiếu nhập kho.')
             return redirect('warehouse:import_list')
 
@@ -131,13 +133,13 @@ class ImportReceiptDetailView(LoginRequiredMixin, View):
         return render(request, 'warehouse/import_receipt_detail.html', {
             'receipt': receipt,
             'products_json': json.dumps(products_data, ensure_ascii=False),
-            'user_role': request.user.role,
+            'user_role': 'ADMIN' if request.user.is_superuser else request.user.role,
         })
 
 
 class ImportReceiptApproveView(LoginRequiredMixin, View):
     def post(self, request, pk):
-        if request.user.role not in ('KE_TOAN', 'ADMIN'):
+        if request.user.role not in ('KE_TOAN', 'ADMIN') and not request.user.is_superuser:
             messages.error(request, 'Bạn không có quyền duyệt phiếu.')
             return redirect('warehouse:import_list')
 
@@ -152,7 +154,7 @@ class ImportReceiptApproveView(LoginRequiredMixin, View):
 
 class ImportReceiptRejectView(LoginRequiredMixin, View):
     def post(self, request, pk):
-        if request.user.role not in ('KE_TOAN', 'ADMIN'):
+        if request.user.role not in ('KE_TOAN', 'ADMIN') and not request.user.is_superuser:
             messages.error(request, 'Bạn không có quyền từ chối phiếu.')
             return redirect('warehouse:import_list')
 
@@ -168,7 +170,7 @@ class ImportReceiptRejectView(LoginRequiredMixin, View):
 
 class ImportReceiptResubmitView(LoginRequiredMixin, View):
     def post(self, request, pk):
-        if request.user.role not in ('KHO', 'ADMIN'):
+        if request.user.role not in ('KHO', 'ADMIN') and not request.user.is_superuser:
             messages.error(request, 'Bạn không có quyền gửi lại phiếu.')
             return redirect('warehouse:import_list')
 
@@ -194,7 +196,7 @@ class StockListView(LoginRequiredMixin, View):
         stocks = service.get_all_stocks()
         return render(request, 'warehouse/stock_list.html', {
             'stocks': stocks,
-            'user_role': request.user.role,
+            'user_role': 'ADMIN' if request.user.is_superuser else request.user.role,
         })
 
 
@@ -234,13 +236,13 @@ class ExportReceiptListView(LoginRequiredMixin, View):
             'products_json': json.dumps(products_data, ensure_ascii=False),
             'status_filter': status_filter,
             'search_query': search_query,
-            'user_role': user.role,
+            'user_role': 'ADMIN' if user.is_superuser else user.role,
             'stats': stats,
         })
 
     def post(self, request):
         """KHO và ADMIN tạo phiếu xuất thủ công"""
-        if request.user.role not in ('KHO', 'ADMIN'):
+        if request.user.role not in ('KHO', 'ADMIN') and not request.user.is_superuser:
             messages.error(request, 'Bạn không có quyền tạo phiếu xuất kho.')
             return redirect('warehouse:export_list')
 
@@ -269,7 +271,7 @@ class ExportReceiptDetailView(LoginRequiredMixin, View):
         return render(request, 'warehouse/export_receipt_detail.html', {
             'receipt': receipt,
             'products_json': json.dumps(products_data, ensure_ascii=False),
-            'user_role': request.user.role,
+            'user_role': 'ADMIN' if request.user.is_superuser else request.user.role,
         })
 
 
@@ -301,7 +303,7 @@ class ExportReceiptRejectView(LoginRequiredMixin, View):
 class ExportReceiptResubmitView(LoginRequiredMixin, View):
     """KHO, ADMIN sửa & gửi lại phiếu bị từ chối"""
     def post(self, request, pk):
-        if request.user.role not in ('KHO', 'ADMIN'):
+        if request.user.role not in ('KHO', 'ADMIN') and not request.user.is_superuser:
             messages.error(request, 'Bạn không có quyền gửi lại phiếu.')
             return redirect('warehouse:export_list')
 

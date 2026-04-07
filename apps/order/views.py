@@ -101,12 +101,14 @@ class SalesOrderListView(LoginRequiredMixin, View):
 
         # Tính valid transitions để template biết nút nào disable
         valid_transitions = SalesOrderService.VALID_TRANSITIONS
+        
+        user_role = 'ADMIN' if user.is_superuser else user.role
 
         return render(request, 'order/sales_order_list.html', {
             'orders': orders,
             'products_json': json.dumps(products_data, ensure_ascii=False),
             'stocks_json': json.dumps(stocks_data),
-            'user_role': user.role,
+            'user_role': user_role,
             'status_filter': status_filter,
             'search_query': search_query,
             'stats': stats,
@@ -120,7 +122,7 @@ class SalesOrderListView(LoginRequiredMixin, View):
         # --- Cập nhật trạng thái đơn hàng ---
         if action == 'update_status':
             # Mọi role trừ SALE đều cập nhật được trạng thái
-            if user.role == 'SALE':
+            if user.role == 'SALE' and not user.is_superuser:
                 messages.error(request, 'Bạn không có quyền cập nhật trạng thái đơn hàng.')
                 return redirect('order:sales_list')
 
@@ -145,7 +147,7 @@ class SalesOrderListView(LoginRequiredMixin, View):
             return redirect('order:sales_list')
 
         # --- Sale tạo đơn hàng ---
-        if user.role not in ('SALE', 'ADMIN'):
+        if user.role not in ('SALE', 'ADMIN') and not user.is_superuser:
             messages.error(request, 'Bạn không có quyền tạo đơn hàng.')
             return redirect('order:sales_list')
 
@@ -176,7 +178,7 @@ class SalesOrderDetailView(LoginRequiredMixin, View):
 
         return render(request, 'order/sales_order_detail.html', {
             'order': order,
-            'user_role': request.user.role,
+            'user_role': 'ADMIN' if request.user.is_superuser else request.user.role,
             'valid_transitions': SalesOrderService.VALID_TRANSITIONS.get(order.status, []),
         })
 
@@ -188,7 +190,9 @@ class CustomerDebtListView(LoginRequiredMixin, View):
         search = request.GET.get('search', '')
 
         debts = service.get_all(status=status_filter or None, search=search or None)
-        stats = _get_debt_stats()
+        
+        # Lấy data thống kê từ service chuẩn MVC
+        stats = service.get_stats() 
 
         return render(request, 'order/customer_debt_list.html', {
             'debts': debts,
@@ -198,8 +202,9 @@ class CustomerDebtListView(LoginRequiredMixin, View):
             'stats': stats,
         })
 
+
     def post(self, request):
-        if request.user.role not in ('KE_TOAN', 'ADMIN'):
+        if request.user.role not in ('KE_TOAN', 'ADMIN') and not request.user.is_superuser:
             messages.error(request, 'Bạn không có quyền cập nhật công nợ.')
             return redirect('order:debt_list')
 
