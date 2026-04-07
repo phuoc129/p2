@@ -212,25 +212,20 @@ class ExportReceiptRepository:
         return receipt
 
     @staticmethod
-    def _extract_order_code_from_note(note):
-        """Trích xuất mã đơn hàng từ note: 'Xuất hàng cho đơn {order_code} — ...'"""
-        if not note:
-            return None
-        # Note format: "Xuất hàng cho đơn DH-20260405-001 — KH: Tran Van Hung"
-        import re
-        match = re.search(r'Xuất hàng cho đơn\s+(DH-\d+-\d+)', note)
-        return match.group(1) if match else None
-
-    @staticmethod
     @transaction.atomic
     def approve(receipt, reviewed_by):
-        """Kế toán duyệt → trừ tồn kho + cập nhật trạng thái đơn hàng"""
+        """
+        Kế toán/Admin duyệt phiếu xuất kho:
+        1. Trừ tồn kho
+        2. Tìm đơn hàng bán liên quan (khớp sản phẩm) và chuyển sang DONE
+        """
         receipt.status = 'APPROVED'
         receipt.reviewed_by = reviewed_by
         receipt.reviewed_at = timezone.now()
         receipt.rejection_note = ''
         receipt.save()
 
+        # --- 1. Trừ tồn kho ---
         for item in receipt.items.select_related('product').all():
             stock, _ = ProductStock.objects.get_or_create(
                 product=item.product,
@@ -239,48 +234,71 @@ class ExportReceiptRepository:
             stock.quantity -= item.quantity
             stock.save()
 
-        # Cập nhật trạng thái đơn hàng thành "Hoàn thành"
-        order_code = ExportReceiptRepository._extract_order_code_from_note(receipt.note)
-        if order_code:
-            from apps.order.models import SalesOrder
-            try:
-                order = SalesOrder.objects.get(order_code=order_code)
-                # Cập nhật nếu đơn ᷱ ở WAITING hoặc đã CANCELLED
-                if order.status in ['WAITING', 'CANCELLED']:
-                    order.status = 'DONE'
-                    order.save()
-            except SalesOrder.DoesNotExist:
-                pass
+        # --- 2. Tìm đơn hàng bán đang WAITING/CONFIRMED và chuyển sang DONE ---
+        # Logic: lấy danh sách product_id trong phiếu xuất,
+        # tìm đơn hàng có chứa ít nhất 1 sản phẩm đó và đang ở trạng thái chờ
+        try:
+            from apps.order.models import SalesOrder, SalesOrderItem
+
+            # Lấy danh sách product_id trong phiếu xuất này
+            export_product_ids = list(
+                receipt.items.values_list('product_id', flat=True)
+            )
+
+            if export_product_ids:
+                # Tìm các đơn hàng CONFIRMED hoặc WAITING có chứa sản phẩm trùng
+                # và chưa hoàn thành/hủy
+                matching_order_ids = SalesOrderItem.objects.filter(
+                    product_id__in=export_product_ids,
+                    order__status__in=['CONFIRMED', 'WAITING']
+                ).values_list('order_id', flat=True).distinct()
+
+                if matching_order_ids:
+                    SalesOrder.objects.filter(
+                        pk__in=matching_order_ids
+                    ).update(status='DONE')
+        except Exception:
+            # Không ảnh hưởng đến việc duyệt phiếu nếu bước này lỗi
+            pass
 
         return receipt
 
     @staticmethod
     def reject(receipt, reviewed_by, rejection_note):
-        """Kế toán từ chối + ghi ghi chú + cập nhật trạng thái đơn hàng"""
+        """Kế toán từ chối + ghi ghi chú → đơn hàng liên quan chuyển về CONFIRMED"""
         receipt.status = 'REJECTED'
         receipt.reviewed_by = reviewed_by
         receipt.reviewed_at = timezone.now()
         receipt.rejection_note = rejection_note
         receipt.save()
 
-        # Cập nhật trạng thái đơn hàng thành "Đã hủy"
-        order_code = ExportReceiptRepository._extract_order_code_from_note(receipt.note)
-        if order_code:
-            from apps.order.models import SalesOrder
-            try:
-                order = SalesOrder.objects.get(order_code=order_code)
-                if order.status == 'WAITING':
-                    order.status = 'CANCELLED'
-                    order.save()
-            except SalesOrder.DoesNotExist:
-                pass
+        # Khi từ chối, đưa các đơn hàng WAITING liên quan về lại CONFIRMED
+        try:
+            from apps.order.models import SalesOrder, SalesOrderItem
+
+            export_product_ids = list(
+                receipt.items.values_list('product_id', flat=True)
+            )
+
+            if export_product_ids:
+                matching_order_ids = SalesOrderItem.objects.filter(
+                    product_id__in=export_product_ids,
+                    order__status='WAITING'
+                ).values_list('order_id', flat=True).distinct()
+
+                if matching_order_ids:
+                    SalesOrder.objects.filter(
+                        pk__in=matching_order_ids
+                    ).update(status='CONFIRMED')
+        except Exception:
+            pass
 
         return receipt
 
     @staticmethod
     @transaction.atomic
     def resubmit(receipt, items_data, note=''):
-        """Thủ kho sửa lại phiếu bị từ chối và gửi lại + cập nhật đơn hàng"""
+        """Thủ kho sửa lại phiếu bị từ chối và gửi lại"""
         receipt.status = 'PENDING'
         receipt.rejection_note = ''
         receipt.note = note
@@ -300,17 +318,4 @@ class ExportReceiptRepository:
             for item in items_data
         ]
         ExportReceiptItem.objects.bulk_create(item_instances)
-
-        # Cập nhật đơn hàng từ CANCELLED → WAITING (đang chờ duyệt lại)
-        order_code = ExportReceiptRepository._extract_order_code_from_note(receipt.note)
-        if order_code:
-            from apps.order.models import SalesOrder
-            try:
-                order = SalesOrder.objects.get(order_code=order_code)
-                if order.status == 'CANCELLED':
-                    order.status = 'WAITING'
-                    order.save()
-            except SalesOrder.DoesNotExist:
-                pass
-
         return receipt

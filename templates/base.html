@@ -264,6 +264,7 @@
             </a>
         </div>
 
+        {% if user.role != 'SALE' %}
         <div class="sidebar-section">
             <div class="section-label">Kho hàng</div>
             <a href="{% url 'warehouse:export_list' %}" class="nav-item {% block nav_export %}{% endblock %}">
@@ -285,6 +286,7 @@
                 Tồn kho
             </a>
         </div>
+        {% endif %}
 
         <div class="sidebar-section">
             <div class="section-label">Cấu hình</div>
