@@ -81,7 +81,7 @@ class CustomerDebt(models.Model):
 
     class Meta:
         db_table = 'customer_debts'
-        ordering = ['due_date']
+        ordering = ['due_date'] 
 
     def __str__(self):
         return f'{self.customer_name} — còn {self.remaining_amount}'
