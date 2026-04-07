@@ -77,7 +77,8 @@ def _base_context(request):
             'KE_TOAN': 'Kế toán',
         }
         # Lấy tên hiển thị Tiếng Việt từ Map, nếu không có thì dùng giá trị gốc
-        role_name = roles_map.get(user.role, user.role)
+        current_role = 'ADMIN' if user.is_superuser else user.role
+        role_name = roles_map.get(current_role, current_role)
 
     return {
         'user_full_name': getattr(user, 'full_name', user.username) if user.is_authenticated else "Khách",

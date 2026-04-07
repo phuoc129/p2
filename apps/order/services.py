@@ -136,3 +136,15 @@ class CustomerDebtService:
             return False, 'Không tìm thấy công nợ.'
         CustomerDebtRepository.update_status(debt, 'PAID')
         return True, 'Đã đánh dấu thanh toán.'
+    def get_stats(self):
+        from django.utils import timezone
+        from django.db.models import Sum
+        from .models import SalesOrder, CustomerDebt
+        
+        today = timezone.now().date()
+        return {
+            'total_orders': SalesOrder.objects.count(),
+            'pending_orders': SalesOrder.objects.filter(status='WAITING').count(),
+            'total_debt': CustomerDebt.objects.filter(status='PENDING').aggregate(total=Sum('remaining_amount'))['total'] or 0,
+            'today_transactions': CustomerDebt.objects.filter(created_at__date=today).count(),
+        }
