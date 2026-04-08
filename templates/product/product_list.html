@@ -178,15 +178,42 @@
       <span class="pg-btn disabled">‹</span>
       {% endif %}
 
+      {# Trang 1 #}
+      {% if page_obj.number != 1 %}
+      <a href="?trang=1{% if search_query %}&search={{ search_query }}{% endif %}{% if category_id %}&category={{ category_id }}{% endif %}" class="pg-btn">1</a>
+      {% else %}
+      <span class="pg-btn active">1</span>
+      {% endif %}
+
+      {# ... nếu có khoảng cách giữa trang 1 và nhóm trang hiện tại #}
+      {% if page_obj.number|add:"-1" > 2 %}
+      <span style="margin: 0 4px; color: var(--muted); display: flex; align-items: flex-end; height: 28px;">...</span>
+      {% endif %}
+
+      {# Các trang xung quanh trang hiện tại (±1), nhưng loại bỏ trang 1 và trang cuối #}
       {% for num in paginator.page_range %}
-        {% if num == page_obj.number %}
-        <span class="pg-btn active">{{ num }}</span>
-        {% elif num >= page_obj.number|add:"-2" and num <= page_obj.number|add:"2" %}
-        <a href="?trang={{ num }}{% if search_query %}&search={{ search_query }}{% endif %}{% if category_id %}&category={{ category_id }}{% endif %}" class="pg-btn">{{ num }}</a>
-        {% elif num == 1 or num == paginator.num_pages %}
-        <a href="?trang={{ num }}{% if search_query %}&search={{ search_query }}{% endif %}{% if category_id %}&category={{ category_id }}{% endif %}" class="pg-btn">{{ num }}</a>
+        {% if num > 1 and num < paginator.num_pages and num >= page_obj.number|add:"-1" and num <= page_obj.number|add:"1" %}
+          {% if num == page_obj.number %}
+          <span class="pg-btn active">{{ num }}</span>
+          {% else %}
+          <a href="?trang={{ num }}{% if search_query %}&search={{ search_query }}{% endif %}{% if category_id %}&category={{ category_id }}{% endif %}" class="pg-btn">{{ num }}</a>
+          {% endif %}
         {% endif %}
       {% endfor %}
+
+      {# ... nếu có khoảng cách giữa nhóm trang hiện tại và trang cuối #}
+      {% if page_obj.number|add:"1" < paginator.num_pages|add:"-1" %}
+      <span style="margin: 0 4px; color: var(--muted); display: flex; align-items: flex-end; height: 28px;">...</span>
+      {% endif %}
+
+      {# Trang cuối #}
+      {% if paginator.num_pages > 1 %}
+        {% if page_obj.number != paginator.num_pages %}
+        <a href="?trang={{ paginator.num_pages }}{% if search_query %}&search={{ search_query }}{% endif %}{% if category_id %}&category={{ category_id }}{% endif %}" class="pg-btn">{{ paginator.num_pages }}</a>
+        {% else %}
+        <span class="pg-btn active">{{ paginator.num_pages }}</span>
+        {% endif %}
+      {% endif %}
 
       {% if page_obj.has_next %}
       <a href="?trang={{ page_obj.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if category_id %}&category={{ category_id }}{% endif %}" class="pg-btn">›</a>
