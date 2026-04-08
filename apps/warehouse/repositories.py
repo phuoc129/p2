@@ -213,42 +213,57 @@ class ExportReceiptRepository:
 
     @staticmethod
     def _extract_order_code_from_note(note):
-        """Trích xuất mã đơn hàng từ note: 'Xuất hàng cho đơn {order_code} — ...'"""
+        """
+        Trích xuất mã đơn hàng từ note.
+        Hỗ trợ format: 'Xuất hàng cho đơn DH-YYYYMMDD-XXX — KH: ...'
+        hoặc bất kỳ chuỗi nào chứa 'DH-YYYYMMDD-XXX'
+        """
         if not note:
             return None
-        # Note format: "Xuất hàng cho đơn DH-20260405-001 — KH: Tran Van Hung"
         import re
-        match = re.search(r'Xuất hàng cho đơn\s+(DH-\d+-\d+)', note)
+        # Match DH- theo sau là digits-digits (format mới: DH-20260405-001)
+        match = re.search(r'(DH-\d{8}-\d+)', note)
+        if match:
+            return match.group(1)
+        # Fallback: format cũ DH-YYYY-XXXX
+        match = re.search(r'(DH-\d{4}-\d+)', note)
         return match.group(1) if match else None
 
     @staticmethod
     @transaction.atomic
     def approve(receipt, reviewed_by):
-        """Kế toán duyệt → trừ tồn kho + cập nhật trạng thái đơn hàng"""
+        """
+        Kế toán duyệt phiếu xuất:
+        1. Trừ tồn kho
+        2. Tự động chuyển đơn hàng sang DONE
+        """
         receipt.status = 'APPROVED'
         receipt.reviewed_by = reviewed_by
         receipt.reviewed_at = timezone.now()
         receipt.rejection_note = ''
         receipt.save()
 
+        # Trừ tồn kho
         for item in receipt.items.select_related('product').all():
             stock, _ = ProductStock.objects.get_or_create(
                 product=item.product,
                 defaults={'quantity': 0}
             )
             stock.quantity -= item.quantity
+            if stock.quantity < 0:
+                stock.quantity = 0  # Không cho âm kho
             stock.save()
 
-        # Cập nhật trạng thái đơn hàng thành "Hoàn thành"
+        # Tự động cập nhật đơn hàng → DONE
         order_code = ExportReceiptRepository._extract_order_code_from_note(receipt.note)
         if order_code:
             from apps.order.models import SalesOrder
             try:
                 order = SalesOrder.objects.get(order_code=order_code)
-                # Cập nhật nếu đơn ᷱ ở WAITING hoặc đã CANCELLED
-                if order.status in ['WAITING', 'CANCELLED']:
+                # Chuyển sang DONE nếu đang WAITING (hoặc CONFIRMED)
+                if order.status in ['WAITING', 'CONFIRMED']:
                     order.status = 'DONE'
-                    order.save()
+                    order.save(update_fields=['status'])
             except SalesOrder.DoesNotExist:
                 pass
 
@@ -256,22 +271,22 @@ class ExportReceiptRepository:
 
     @staticmethod
     def reject(receipt, reviewed_by, rejection_note):
-        """Kế toán từ chối + ghi ghi chú + cập nhật trạng thái đơn hàng"""
+        """Kế toán từ chối phiếu xuất + cập nhật đơn hàng về CONFIRMED"""
         receipt.status = 'REJECTED'
         receipt.reviewed_by = reviewed_by
         receipt.reviewed_at = timezone.now()
         receipt.rejection_note = rejection_note
         receipt.save()
 
-        # Cập nhật trạng thái đơn hàng thành "Đã hủy"
+        # Đơn hàng liên quan → trả về CONFIRMED để có thể tạo phiếu xuất mới
         order_code = ExportReceiptRepository._extract_order_code_from_note(receipt.note)
         if order_code:
             from apps.order.models import SalesOrder
             try:
                 order = SalesOrder.objects.get(order_code=order_code)
                 if order.status == 'WAITING':
-                    order.status = 'CANCELLED'
-                    order.save()
+                    order.status = 'CONFIRMED'
+                    order.save(update_fields=['status'])
             except SalesOrder.DoesNotExist:
                 pass
 
@@ -280,7 +295,7 @@ class ExportReceiptRepository:
     @staticmethod
     @transaction.atomic
     def resubmit(receipt, items_data, note=''):
-        """Thủ kho sửa lại phiếu bị từ chối và gửi lại + cập nhật đơn hàng"""
+        """Thủ kho sửa lại phiếu bị từ chối và gửi lại"""
         receipt.status = 'PENDING'
         receipt.rejection_note = ''
         receipt.note = note
@@ -301,15 +316,15 @@ class ExportReceiptRepository:
         ]
         ExportReceiptItem.objects.bulk_create(item_instances)
 
-        # Cập nhật đơn hàng từ CANCELLED → WAITING (đang chờ duyệt lại)
-        order_code = ExportReceiptRepository._extract_order_code_from_note(receipt.note)
+        # Đưa đơn hàng về WAITING để chờ duyệt lại
+        order_code = ExportReceiptRepository._extract_order_code_from_note(note)
         if order_code:
             from apps.order.models import SalesOrder
             try:
                 order = SalesOrder.objects.get(order_code=order_code)
-                if order.status == 'CANCELLED':
+                if order.status == 'CONFIRMED':
                     order.status = 'WAITING'
-                    order.save()
+                    order.save(update_fields=['status'])
             except SalesOrder.DoesNotExist:
                 pass
 

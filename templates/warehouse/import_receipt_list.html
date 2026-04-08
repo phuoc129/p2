@@ -16,7 +16,7 @@
 .search-form input{padding:8px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;font-size:13px;color:var(--text);outline:none;transition:border-color .15s;width:320px;}
 .search-form input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(232,164,39,.08);}
 .search-form button{padding:8px 16px;background:var(--accent);color:black;border:none;border-radius:8px;font-weight:600;cursor:pointer;transition:all .15s;}
-.search-form button:hover{opacity:1;filter:brightness(1.15);box-shadow:0 2px 8px rgba(232,164,39,.3);}
+.search-form button:hover{filter:brightness(1.15);}
 .filter-search-row{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;margin-bottom:20px;}
 .filter-search-row .filter-tabs{margin:0;}
 .filter-search-row .search-form{margin:0;}
@@ -26,7 +26,7 @@
 .stat-value{font-size:32px;font-weight:700;color:var(--accent);font-family:Google Sans Flex,sans-serif;}
 .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(4px);z-index:100;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s;}
 .modal-backdrop.open{opacity:1;pointer-events:all;}
-.modal{background:var(--surface);border:1px solid var(--border);border-radius:16px;width:100%;max-width:720px;padding:28px;transform:translateY(16px);transition:transform .2s;max-height:90vh;overflow-y:auto;}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:16px;width:100%;max-width:760px;padding:28px;transform:translateY(16px);transition:transform .2s;max-height:90vh;overflow-y:auto;}
 .modal-backdrop.open .modal{transform:translateY(0);}
 .modal-sm{max-width:420px;}
 .modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;}
@@ -53,10 +53,10 @@
 .toast.success{border-left:3px solid var(--success);}
 .toast.warning{border-left:3px solid var(--warning);}
 .toast.danger{border-left:3px solid var(--danger);}
+.price-hint{font-size:10px;color:var(--muted);margin-top:2px;}
 {% endblock %}
 
 {% block content %}
-{# Truyền URL pattern vào JS qua data attributes - tránh hardcode #}
 <div id="url-data"
   data-approve-url="{% url 'warehouse:import_approve' pk='00000000-0000-0000-0000-000000000000' %}"
   data-reject-url="{% url 'warehouse:import_reject' pk='00000000-0000-0000-0000-000000000000' %}"
@@ -77,32 +77,19 @@
   {% endif %}
 </div>
 
-<!-- Stats Bar -->
 <div class="stats-bar">
-  <div class="stat-card">
-    <div class="stat-label">Tổng Phiếu</div>
-    <div class="stat-value">{{ stats.total_receipts|floatformat:0 }}</div>
-  </div>
-  <div class="stat-card">
-    <div class="stat-label">Phiếu Chờ Duyệt</div>
-    <div class="stat-value">{{ stats.pending_receipts|floatformat:0 }}</div>
-  </div>
-  <div class="stat-card">
-    <div class="stat-label">Tổng Số SP</div>
-    <div class="stat-value">{{ stats.total_items|floatformat:0 }}</div>
-  </div>
-  <div class="stat-card">
-    <div class="stat-label">Giao Dịch Hôm Nay</div>
-    <div class="stat-value">{{ stats.today_transactions|floatformat:0 }}</div>
-  </div>
+  <div class="stat-card"><div class="stat-label">Tổng Phiếu</div><div class="stat-value">{{ stats.total_receipts|floatformat:0 }}</div></div>
+  <div class="stat-card"><div class="stat-label">Phiếu Chờ Duyệt</div><div class="stat-value">{{ stats.pending_receipts|floatformat:0 }}</div></div>
+  <div class="stat-card"><div class="stat-label">Tổng Số SP</div><div class="stat-value">{{ stats.total_items|floatformat:0 }}</div></div>
+  <div class="stat-card"><div class="stat-label">Giao Dịch Hôm Nay</div><div class="stat-value">{{ stats.today_transactions|floatformat:0 }}</div></div>
 </div>
 
 <div class="filter-search-row">
   <div class="filter-tabs">
-  <a href="?status=" class="filter-tab {% if not status_filter %}active{% endif %}">Tất cả</a>
-  <a href="?status=PENDING"  class="filter-tab {% if status_filter == 'PENDING'  %}active{% endif %}">⏳ Chờ duyệt</a>
-  <a href="?status=APPROVED" class="filter-tab {% if status_filter == 'APPROVED' %}active{% endif %}">✅ Đã duyệt</a>
-  <a href="?status=REJECTED" class="filter-tab {% if status_filter == 'REJECTED' %}active{% endif %}">❌ Từ chối</a>
+    <a href="?status=" class="filter-tab {% if not status_filter %}active{% endif %}">Tất cả</a>
+    <a href="?status=PENDING"  class="filter-tab {% if status_filter == 'PENDING'  %}active{% endif %}">⏳ Chờ duyệt</a>
+    <a href="?status=APPROVED" class="filter-tab {% if status_filter == 'APPROVED' %}active{% endif %}">✅ Đã duyệt</a>
+    <a href="?status=REJECTED" class="filter-tab {% if status_filter == 'REJECTED' %}active{% endif %}">❌ Từ chối</a>
   </div>
   <form method="get" class="search-form">
     <input type="text" name="search" placeholder="Tìm kiếm theo mã phiếu..." value="{{ search_query }}" />
@@ -182,7 +169,7 @@
   {% endfor %}{% endif %}
 </div>
 
-<!-- ── Modal: Tạo phiếu nhập ── -->
+<!-- Modal: Tạo phiếu nhập -->
 <div class="modal-backdrop" id="modal-create">
   <form class="modal" method="POST" action="{% url 'warehouse:import_list' %}" id="create-form">
     {% csrf_token %}
@@ -201,10 +188,10 @@
       </div>
       <table class="items-table" id="items-table">
         <thead><tr>
-          <th style="width:38%">Sản phẩm</th>
-          <th style="width:18%">Số lượng</th>
-          <th style="width:14%">Đơn vị</th>
-          <th style="width:22%">Đơn giá nhập</th>
+          <th style="width:35%">Sản phẩm</th>
+          <th style="width:16%">Số lượng</th>
+          <th style="width:11%">Đơn vị</th>
+          <th style="width:22%">Đơn giá nhập <span style="font-weight:400;color:var(--muted)">(tự điền)</span></th>
           <th style="width:8%"></th>
         </tr></thead>
         <tbody id="items-body"></tbody>
@@ -217,7 +204,7 @@
   </form>
 </div>
 
-<!-- ── Modal: Duyệt phiếu ── -->
+<!-- Modal: Duyệt phiếu -->
 <div class="modal-backdrop" id="modal-approve">
   <form class="modal modal-sm" method="POST" id="approve-form">
     {% csrf_token %}
@@ -236,7 +223,7 @@
   </form>
 </div>
 
-<!-- ── Modal: Từ chối phiếu ── -->
+<!-- Modal: Từ chối phiếu -->
 <div class="modal-backdrop" id="modal-reject">
   <form class="modal modal-sm" method="POST" id="reject-form">
     {% csrf_token %}
@@ -256,7 +243,7 @@
   </form>
 </div>
 
-<!-- ── Modal: Xem chi tiết ── -->
+<!-- Modal: Xem chi tiết -->
 <div class="modal-backdrop" id="modal-view">
   <div class="modal" id="modal-view-content">
     <div class="modal-header">
@@ -267,7 +254,7 @@
   </div>
 </div>
 
-<!-- ── Modal: Sửa & gửi lại ── -->
+<!-- Modal: Sửa & gửi lại -->
 <div class="modal-backdrop" id="modal-resubmit">
   <form class="modal" method="POST" id="resubmit-form">
     {% csrf_token %}
@@ -275,7 +262,7 @@
       <span class="modal-title">Sửa & gửi lại phiếu</span>
       <button type="button" class="modal-close" onclick="closeModal('modal-resubmit')">✕</button>
     </div>
-    <div class="rejection-box" id="resubmit-rejection-box">
+    <div class="rejection-box">
       <div class="rejection-label">Lý do bị từ chối:</div>
       <div id="resubmit-rejection-note"></div>
     </div>
@@ -290,8 +277,8 @@
       </div>
       <table class="items-table">
         <thead><tr>
-          <th style="width:38%">Sản phẩm</th><th style="width:18%">Số lượng</th>
-          <th style="width:14%">Đơn vị</th><th style="width:22%">Đơn giá</th><th style="width:8%"></th>
+          <th style="width:35%">Sản phẩm</th><th style="width:16%">Số lượng</th>
+          <th style="width:11%">Đơn vị</th><th style="width:22%">Đơn giá nhập</th><th style="width:8%"></th>
         </tr></thead>
         <tbody id="resubmit-items-body"></tbody>
       </table>
@@ -304,20 +291,22 @@
 </div>
 
 <script>
+// Dữ liệu sản phẩm kèm giá
 const PRODUCTS = {{ products_json|safe }};
+// Map nhanh product_id → base_price
+const PRODUCT_PRICE_MAP = {};
+PRODUCTS.forEach(p => { PRODUCT_PRICE_MAP[p.id] = p.base_price; });
+
 let itemCount = 0;
 let resubmitCount = 0;
 
-// Lấy URL templates từ data attributes (đúng cách, không hardcode)
 const urlData = document.getElementById('url-data');
 const APPROVE_URL_TPL  = urlData.dataset.approveUrl;
 const REJECT_URL_TPL   = urlData.dataset.rejectUrl;
 const RESUBMIT_URL_TPL = urlData.dataset.resubmitUrl;
 const FAKE_UUID = '00000000-0000-0000-0000-000000000000';
 
-function makeUrl(tpl, id) {
-  return tpl.replace(FAKE_UUID, id);
-}
+function makeUrl(tpl, id) { return tpl.replace(FAKE_UUID, id); }
 
 const RECEIPTS = [
   {% for r in receipts %}
@@ -334,13 +323,9 @@ const RECEIPTS = [
     reviewedAt: '{% if r.reviewed_at %}{{ r.reviewed_at|date:"d/m/Y H:i" }}{% endif %}',
     items: [
       {% for item in r.items.all %}
-      {
-        product: '{{ item.product.name|escapejs }}',
-        unit: '{{ item.product.base_unit|escapejs }}',
-        qty: parseFloat('{{ item.quantity }}') || 0,
-        price: parseFloat('{{ item.unit_price }}') || 0,
-        note: '{{ item.note|default:""|escapejs }}'
-      },
+      { product: '{{ item.product.name|escapejs }}', unit: '{{ item.product.base_unit|escapejs }}',
+        qty: parseFloat('{{ item.quantity }}') || 0, price: parseFloat('{{ item.unit_price }}') || 0,
+        note: '{{ item.note|default:""|escapejs }}' },
       {% endfor %}
     ],
   },
@@ -350,27 +335,50 @@ const RECEIPTS = [
 function buildProductOptions(selectedId='') {
   return `<option value="">-- Chọn sản phẩm --</option>` +
     PRODUCTS.map(p =>
-      `<option value="${p.id}" data-unit="${p.base_unit}" ${p.id===selectedId?'selected':''}>${p.name} (${p.category})</option>`
+      `<option value="${p.id}" data-unit="${p.base_unit}" data-price="${p.base_price}"
+        ${p.id===selectedId?'selected':''}>${p.name} (${p.category})</option>`
     ).join('');
+}
+
+// Khi chọn sản phẩm → tự động điền đơn vị và giá bán (làm giá nhập gợi ý)
+function onProductSelect(sel, prefix, i) {
+  const opt = sel.options[sel.selectedIndex];
+  const unitSpan = document.getElementById(`${prefix}-unit-${i}`);
+  const priceInput = document.getElementById(`${prefix}-price-${i}`);
+  const priceHint = document.getElementById(`${prefix}-price-hint-${i}`);
+
+  if (unitSpan) unitSpan.textContent = opt.dataset.unit || '—';
+
+  if (priceInput && opt.dataset.price) {
+    const basePrice = parseFloat(opt.dataset.price) || 0;
+    priceInput.value = basePrice;
+    if (priceHint) {
+      priceHint.textContent = basePrice > 0 ? `Giá bán: ${basePrice.toLocaleString('vi-VN')}đ` : '';
+    }
+  }
 }
 
 function buildItemRow(prefix, i, productId='', qty='', price='', unit='') {
   return `<tr id="${prefix}-row-${i}">
-    <td><select name="product_id_${i}" onchange="updateUnit(this,'${prefix}-unit-${i}')">${buildProductOptions(productId)}</select></td>
+    <td>
+      <select name="product_id_${i}" onchange="onProductSelect(this,'${prefix}',${i})">
+        ${buildProductOptions(productId)}
+      </select>
+    </td>
     <td><input type="number" name="quantity_${i}" value="${qty}" min="0.01" step="0.01" placeholder="0"></td>
-    <td><span id="${prefix}-unit-${i}" style="font-size:13px;color:var(--muted2);">${unit}</span></td>
-    <td><input type="number" name="unit_price_${i}" value="${price}" min="0" step="0.01" placeholder="0"></td>
-    <td><button type="button" class="btn-icon" onclick="this.closest('tr').remove()">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
-      </svg>
-    </button></td>
+    <td><span id="${prefix}-unit-${i}" style="font-size:13px;color:var(--muted2);">${unit || '—'}</span></td>
+    <td>
+      <input type="number" name="unit_price_${i}" id="${prefix}-price-${i}" value="${price}" min="0" step="1" placeholder="0">
+      <div class="price-hint" id="${prefix}-price-hint-${i}"></div>
+    </td>
+    <td>
+      <button type="button" class="btn-icon" onclick="this.closest('tr').remove()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+        </svg>
+      </button>
+    </td>
   </tr>`;
-}
-
-function updateUnit(selectEl, spanId) {
-  const opt = selectEl.options[selectEl.selectedIndex];
-  document.getElementById(spanId).textContent = opt.dataset.unit || '';
 }
 
 function addItemRow() {
@@ -416,17 +424,15 @@ function viewReceipt(id) {
   const statusColors = { PENDING: 'var(--warning)', APPROVED: 'var(--success)', REJECTED: 'var(--danger)' };
   const statusLabels = { PENDING: 'Chờ duyệt', APPROVED: 'Đã duyệt', REJECTED: 'Từ chối' };
 
-  let rejBlock = '';
-  if (r.status === 'REJECTED' && r.rejectionNote) {
-    rejBlock = `<div style="background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:8px;padding:12px 16px;margin-bottom:16px;">
-      <div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--danger);font-weight:600;margin-bottom:4px;">Lý do từ chối:</div>
-      <div style="font-size:13px;color:#fca5a5;">${r.rejectionNote}</div>
-    </div>`;
-  }
+  let rejBlock = r.status === 'REJECTED' && r.rejectionNote
+    ? `<div style="background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:8px;padding:12px 16px;margin-bottom:16px;">
+        <div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--danger);font-weight:600;margin-bottom:4px;">Lý do từ chối:</div>
+        <div style="font-size:13px;color:#fca5a5;">${r.rejectionNote}</div>
+      </div>` : '';
 
   let itemsHtml = r.items.map(item => `<tr>
     <td>${item.product}</td><td>${item.qty}</td><td>${item.unit}</td>
-    <td>${item.price ? Number(item.price).toLocaleString()+'đ' : '—'}</td>
+    <td>${item.price ? Number(item.price).toLocaleString('vi-VN')+'đ' : '—'}</td>
     <td style="color:var(--muted)">${item.note||''}</td>
   </tr>`).join('');
 
@@ -445,7 +451,7 @@ function viewReceipt(id) {
     ${r.note ? `<div style="margin-bottom:14px;font-size:13px;color:var(--muted2);">📝 ${r.note}</div>` : ''}
     ${rejBlock}
     <table class="items-table">
-      <thead><tr><th>Sản phẩm</th><th>Số lượng</th><th>Đơn vị</th><th>Đơn giá</th><th>Ghi chú</th></tr></thead>
+      <thead><tr><th>Sản phẩm</th><th>Số lượng</th><th>Đơn vị</th><th>Đơn giá nhập</th><th>Ghi chú</th></tr></thead>
       <tbody>${itemsHtml || '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px">Không có sản phẩm</td></tr>'}</tbody>
     </table>`;
   document.getElementById('modal-view').classList.add('open');
