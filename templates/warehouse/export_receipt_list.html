@@ -51,10 +51,10 @@
 .toast.success{border-left:3px solid var(--success);}
 .toast.warning{border-left:3px solid var(--warning);}
 .toast.danger{border-left:3px solid var(--danger);}
-/* Pagination */
+/* Pagination - giống product_list */
 .pagination-wrap{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-top:1px solid var(--border);}
 .pagination{display:flex;gap:4px;}
-.pg-btn{min-width:32px;height:32px;padding:0 8px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:12px;color:var(--muted2);text-decoration:none;transition:all .15s;}
+.pg-btn{min-width:30px;height:30px;padding:0 8px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:12px;color:var(--muted2);text-decoration:none;transition:all .15s;}
 .pg-btn:hover{background:var(--surface3);color:var(--text);}
 .pg-btn.active{background:var(--accent);border-color:var(--accent);color:#0e0f11;font-weight:700;}
 .pg-btn.disabled{opacity:.4;cursor:not-allowed;pointer-events:none;}
@@ -132,17 +132,12 @@
             <button class="action-btn" title="Xem chi tiết" onclick="viewReceipt('{{ r.id }}')">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
             </button>
-
             {% if user_role == 'KE_TOAN' or user_role == 'ADMIN' %}
               {% if r.status == 'PENDING' %}
-              <button class="action-btn" title="Duyệt"
-                onclick="openApproveModal('{{ r.id }}','{{ r.receipt_code }}')"
-                style="color:var(--success)">
+              <button class="action-btn" title="Duyệt" onclick="openApproveModal('{{ r.id }}','{{ r.receipt_code }}')" style="color:var(--success)">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
               </button>
-              <button class="action-btn" title="Từ chối"
-                onclick="openRejectModal('{{ r.id }}','{{ r.receipt_code }}')"
-                style="color:var(--danger)">
+              <button class="action-btn" title="Từ chối" onclick="openRejectModal('{{ r.id }}','{{ r.receipt_code }}')" style="color:var(--danger)">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
               </button>
               {% endif %}
@@ -159,25 +154,54 @@
   {% if paginator.num_pages > 1 %}
   <div class="pagination-wrap">
     <span style="font-size:12px;color:var(--muted);">
-      Trang {{ page_obj.number }}/{{ paginator.num_pages }} — {{ paginator.count }} phiếu
+      Trang {{ page_obj.number }} / {{ paginator.num_pages }} — {{ paginator.count }} phiếu
     </span>
     <div class="pagination">
+      {# Nút trước #}
       {% if page_obj.has_previous %}
       <a href="?page={{ page_obj.previous_page_number }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}" class="pg-btn">‹</a>
       {% else %}
       <span class="pg-btn disabled">‹</span>
       {% endif %}
 
+      {# Trang 1 #}
+      {% if page_obj.number != 1 %}
+      <a href="?page=1{% if status_filter %}&status={{ status_filter }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}" class="pg-btn">1</a>
+      {% else %}
+      <span class="pg-btn active">1</span>
+      {% endif %}
+
+      {# Dấu ... trái #}
+      {% if page_obj.number|add:"-1" > 2 %}
+      <span style="margin:0 4px;color:var(--muted);display:flex;align-items:flex-end;height:28px;">...</span>
+      {% endif %}
+
+      {# Trang ±1 xung quanh trang hiện tại #}
       {% for num in paginator.page_range %}
-        {% if num == page_obj.number %}
+        {% if num > 1 and num < paginator.num_pages and num >= page_obj.number|add:"-1" and num <= page_obj.number|add:"1" %}
+          {% if num == page_obj.number %}
           <span class="pg-btn active">{{ num }}</span>
-        {% elif num == 1 or num == paginator.num_pages or num >= page_obj.number|add:"-2" and num <= page_obj.number|add:"2" %}
+          {% else %}
           <a href="?page={{ num }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}" class="pg-btn">{{ num }}</a>
-        {% elif num == page_obj.number|add:"-3" or num == page_obj.number|add:"3" %}
-          <span class="pg-btn disabled" style="border:none;background:none;">…</span>
+          {% endif %}
         {% endif %}
       {% endfor %}
 
+      {# Dấu ... phải #}
+      {% if page_obj.number|add:"1" < paginator.num_pages|add:"-1" %}
+      <span style="margin:0 4px;color:var(--muted);display:flex;align-items:flex-end;height:28px;">...</span>
+      {% endif %}
+
+      {# Trang cuối #}
+      {% if paginator.num_pages > 1 %}
+        {% if page_obj.number != paginator.num_pages %}
+        <a href="?page={{ paginator.num_pages }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}" class="pg-btn">{{ paginator.num_pages }}</a>
+        {% else %}
+        <span class="pg-btn active">{{ paginator.num_pages }}</span>
+        {% endif %}
+      {% endif %}
+
+      {# Nút sau #}
       {% if page_obj.has_next %}
       <a href="?page={{ page_obj.next_page_number }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}" class="pg-btn">›</a>
       {% else %}
@@ -245,7 +269,7 @@
     </p>
     <div class="modal-footer">
       <button type="button" class="btn btn-ghost" onclick="closeModal('modal-approve')">Hủy</button>
-      <button type="submit" class="btn btn-primary" style="background:var(--success);color:#fff;">✓ Duyệt</button>
+      <button type="submit" class="btn btn-primary" style="background:var(--success);color:#fff;">✓ Duyệt phiếu xuất</button>
     </div>
   </form>
 </div>
@@ -375,7 +399,6 @@ function viewReceipt(id) {
   if (!r) return;
   const statusColors = { PENDING: 'var(--warning)', APPROVED: 'var(--success)', REJECTED: 'var(--danger)' };
   const statusLabels = { PENDING: 'Chờ duyệt', APPROVED: 'Đã duyệt', REJECTED: 'Từ chối' };
-
   let rejBlock = '';
   if (r.status === 'REJECTED' && r.rejectionNote) {
     rejBlock = `<div style="background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:8px;padding:12px 16px;margin-bottom:16px;">
@@ -383,13 +406,11 @@ function viewReceipt(id) {
       <div style="font-size:13px;color:#fca5a5;">${r.rejectionNote}</div>
     </div>`;
   }
-
   let itemsHtml = r.items.map(item => `<tr>
     <td>${item.product}</td><td>${item.qty}</td><td>${item.unit}</td>
     <td>${item.price ? Number(item.price).toLocaleString('vi-VN')+'đ' : '—'}</td>
     <td style="color:var(--muted)">${item.note||''}</td>
   </tr>`).join('');
-
   document.getElementById('view-title').textContent = `Phiếu ${r.code}`;
   document.getElementById('view-body').innerHTML = `
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">

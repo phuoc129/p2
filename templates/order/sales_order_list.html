@@ -37,11 +37,15 @@
 .field input:focus,.field select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(232,164,39,.08);}
 .form-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
 .modal-footer{display:flex;justify-content:flex-end;gap:10px;margin-top:24px;padding-top:20px;border-top:1px solid var(--border);}
+/* Items table trong modal tạo đơn */
 .items-table{width:100%;border-collapse:collapse;margin-bottom:12px;}
 .items-table th{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);padding:8px 10px;background:var(--surface2);border-bottom:1px solid var(--border);text-align:left;}
 .items-table td{padding:8px 10px;border-bottom:1px solid var(--border);vertical-align:middle;}
 .items-table td input,.items-table td select{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:7px 10px;font-size:13px;color:var(--text);outline:none;width:100%;}
 .items-table td input:focus,.items-table td select:focus{border-color:var(--accent);}
+/* Giá bán — chỉ hiển thị, không nhập được */
+.price-display{background:var(--surface3);border:1px solid var(--border);border-radius:6px;padding:7px 10px;font-size:13px;color:var(--accent);font-weight:600;min-height:35px;display:flex;align-items:center;}
+.price-display.empty{color:var(--muted);font-weight:400;}
 .toast-container{position:fixed;bottom:28px;right:28px;z-index:200;display:flex;flex-direction:column;gap:10px;}
 .toast{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 16px;display:flex;align-items:center;gap:10px;font-size:13px;box-shadow:0 8px 24px rgba(0,0,0,.4);transform:translateX(80px);opacity:0;transition:all .3s;min-width:260px;}
 .toast.show{transform:translateX(0);opacity:1;}
@@ -271,11 +275,11 @@
       </div>
       <table class="items-table">
         <thead><tr>
-          <th style="width:40%">Sản phẩm</th>
-          <th style="width:18%">Số lượng</th>
-          <th style="width:12%">Đơn vị</th>
-          <th style="width:18%">Đơn giá bán</th>
-          <th style="width:12%">Còn trong kho</th>
+          <th style="width:36%">Sản phẩm</th>
+          <th style="width:16%">Số lượng</th>
+          <th style="width:10%">Đơn vị</th>
+          <th style="width:22%">Đơn giá bán</th>
+          <th style="width:16%">Tồn kho</th>
         </tr></thead>
         <tbody id="order-items-body"></tbody>
       </table>
@@ -307,7 +311,9 @@ function submitStatusUpdate() {
 function buildProductOpts(selectedId='') {
   return `<option value="">-- Chọn sản phẩm --</option>` +
     PRODUCTS.map(p =>
-      `<option value="${p.id}" data-unit="${p.base_unit}" data-price="${p.base_price}"
+      `<option value="${p.id}"
+        data-unit="${p.base_unit}"
+        data-price="${p.base_price}"
         ${p.id===selectedId?'selected':''}>${p.name}</option>`
     ).join('');
 }
@@ -315,10 +321,27 @@ function buildProductOpts(selectedId='') {
 function addOrderRow() {
   const i = orderCount;
   const html = `<tr id="order-row-${i}">
-    <td><select name="product_id_${i}" onchange="onProductChange(this,${i})">${buildProductOpts()}</select></td>
-    <td><input type="number" name="quantity_${i}" min="0.01" step="0.01" placeholder="0" oninput="checkStock(${i})" id="qty-${i}"></td>
-    <td><span id="unit-${i}" style="font-size:13px;color:var(--muted2);">—</span></td>
-    <td><input type="number" name="unit_price_${i}" min="0" step="0.01" placeholder="0" id="price-${i}"></td>
+    <td>
+      <select name="product_id_${i}" onchange="onProductChange(this,${i})">
+        ${buildProductOpts()}
+      </select>
+    </td>
+    <td>
+      <input type="number"
+        name="quantity_${i}"
+        min="0.01" step="0.01"
+        placeholder="0"
+        oninput="checkStock(${i})"
+        id="qty-${i}">
+    </td>
+    <td>
+      <span id="unit-${i}" style="font-size:13px;color:var(--muted2);">—</span>
+    </td>
+    <td>
+      {# Giá bán: chỉ hiển thị, truyền qua hidden input #}
+      <div class="price-display empty" id="price-display-${i}">Chọn sản phẩm</div>
+      <input type="hidden" name="unit_price_${i}" id="price-${i}" value="0">
+    </td>
     <td>
       <span id="stock-${i}" style="font-size:11px;color:var(--muted);">—</span>
       <button type="button" onclick="document.getElementById('order-row-${i}').remove()"
@@ -331,8 +354,27 @@ function addOrderRow() {
 
 function onProductChange(sel, i) {
   const opt = sel.options[sel.selectedIndex];
-  document.getElementById(`unit-${i}`).textContent = opt.dataset.unit || '—';
-  document.getElementById(`price-${i}`).value = opt.dataset.price || '';
+  const unit = opt.dataset.unit || '';
+  const price = parseFloat(opt.dataset.price) || 0;
+
+  document.getElementById(`unit-${i}`).textContent = unit || '—';
+
+  // Cập nhật hidden input và hiển thị giá
+  const priceInput = document.getElementById(`price-${i}`);
+  const priceDisplay = document.getElementById(`price-display-${i}`);
+
+  if (priceInput) priceInput.value = price;
+
+  if (priceDisplay) {
+    if (price > 0) {
+      priceDisplay.textContent = price.toLocaleString('vi-VN') + 'đ';
+      priceDisplay.classList.remove('empty');
+    } else {
+      priceDisplay.textContent = 'Chọn sản phẩm';
+      priceDisplay.classList.add('empty');
+    }
+  }
+
   checkStock(i);
 }
 

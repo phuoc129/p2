@@ -12,7 +12,7 @@ from .services import SalesOrderService, CustomerDebtService
 from .models import SalesOrder, SalesOrderItem, CustomerDebt
 
 
-PAGE_SIZE = 10
+PAGE_SIZE = 5
 
 
 def _products_json():

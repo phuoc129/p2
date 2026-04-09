@@ -64,7 +64,7 @@ def _get_export_receipt_stats():
     }
 
 
-PAGE_SIZE = 10  # Số phiếu mỗi trang
+PAGE_SIZE = 5  # Số phiếu mỗi trang
 
 
 # ═══════════════════════════════════════════════════════════════

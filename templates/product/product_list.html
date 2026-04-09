@@ -19,7 +19,7 @@
 .modal-close { width: 30px; height: 30px; background: var(--surface2); border: 1px solid var(--border); border-radius: 7px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--muted2); }
 .field { margin-bottom: 16px; }
 .field-label { display: block; font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 7px; }
-.field input, .field select, .field textarea { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 11px 14px; font-family: Google Sans Flex, sans-serif; font-size: 13px; color: var(--text); outline: none; transition: border-color 0.15s; }
+.field input, .field select, .field textarea { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 11px 14px; font-family: Google Sales Flex, sans-serif; font-size: 13px; color: var(--text); outline: none; transition: border-color 0.15s; }
 .field textarea { height: 80px; resize: none; }
 .field input::placeholder, .field textarea::placeholder { color: #3a3e47; }
 .field input:focus, .field select:focus, .field textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(232,164,39,0.08); }
@@ -47,14 +47,13 @@
 .cat-pill { padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 500; text-decoration: none; border: 1px solid var(--border); background: var(--surface); color: var(--muted2); transition: all .15s; }
 .cat-pill:hover { background: var(--surface2); color: var(--text); }
 .cat-pill.active { background: rgba(232,164,39,.12); border-color: rgba(232,164,39,.3); color: var(--accent); }
+/* Pagination — đồng bộ với các trang khác */
 .pagination-wrap { display: flex; align-items: center; justify-content: space-between; padding: 14px 20px; border-top: 1px solid var(--border); }
 .pagination { display: flex; gap: 4px; }
-.pg-btn { min-width: 30px; height: 30px; padding: 0 8px; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 12px; color: var(--muted2); text-decoration: none; transition: all .15s; }
+.pg-btn { min-width: 32px; height: 32px; padding: 0 8px; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 12px; color: var(--muted2); text-decoration: none; transition: all .15s; }
 .pg-btn:hover { background: var(--surface3); color: var(--text); }
 .pg-btn.active { background: var(--accent); border-color: var(--accent); color: #0e0f11; font-weight: 700; }
 .pg-btn.disabled { opacity: 0.4; cursor: not-allowed; pointer-events: none; }
-/* Tồn kho hiển thị nhỏ bên cạnh badge */
-.stock-qty-hint { font-size: 11px; color: var(--muted2); margin-left: 4px; }
 {% endblock %}
 
 {% block content %}
@@ -169,54 +168,27 @@
   {% if paginator.num_pages > 1 %}
   <div class="pagination-wrap">
     <span style="font-size:12px;color:var(--muted);">
-      Trang {{ page_obj.number }} / {{ paginator.num_pages }} — {{ tong_so_luong }} sản phẩm
+      Trang {{ page_obj.number }}/{{ paginator.num_pages }} — {{ tong_so_luong }} sản phẩm
     </span>
     <div class="pagination">
       {% if page_obj.has_previous %}
-      <a href="?trang={{ page_obj.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if category_id %}&category={{ category_id }}{% endif %}" class="pg-btn">‹</a>
+      <a href="?page={{ page_obj.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if category_id %}&category={{ category_id }}{% endif %}" class="pg-btn">‹</a>
       {% else %}
       <span class="pg-btn disabled">‹</span>
       {% endif %}
 
-      {# Trang 1 #}
-      {% if page_obj.number != 1 %}
-      <a href="?trang=1{% if search_query %}&search={{ search_query }}{% endif %}{% if category_id %}&category={{ category_id }}{% endif %}" class="pg-btn">1</a>
-      {% else %}
-      <span class="pg-btn active">1</span>
-      {% endif %}
-
-      {# ... nếu có khoảng cách giữa trang 1 và nhóm trang hiện tại #}
-      {% if page_obj.number|add:"-1" > 2 %}
-      <span style="margin: 0 4px; color: var(--muted); display: flex; align-items: flex-end; height: 28px;">...</span>
-      {% endif %}
-
-      {# Các trang xung quanh trang hiện tại (±1), nhưng loại bỏ trang 1 và trang cuối #}
       {% for num in paginator.page_range %}
-        {% if num > 1 and num < paginator.num_pages and num >= page_obj.number|add:"-1" and num <= page_obj.number|add:"1" %}
-          {% if num == page_obj.number %}
+        {% if num == page_obj.number %}
           <span class="pg-btn active">{{ num }}</span>
-          {% else %}
-          <a href="?trang={{ num }}{% if search_query %}&search={{ search_query }}{% endif %}{% if category_id %}&category={{ category_id }}{% endif %}" class="pg-btn">{{ num }}</a>
-          {% endif %}
+        {% elif num == 1 or num == paginator.num_pages or num >= page_obj.number|add:"-2" and num <= page_obj.number|add:"2" %}
+          <a href="?page={{ num }}{% if search_query %}&search={{ search_query }}{% endif %}{% if category_id %}&category={{ category_id }}{% endif %}" class="pg-btn">{{ num }}</a>
+        {% elif num == page_obj.number|add:"-3" or num == page_obj.number|add:"3" %}
+          <span class="pg-btn disabled" style="border:none;background:none;">…</span>
         {% endif %}
       {% endfor %}
 
-      {# ... nếu có khoảng cách giữa nhóm trang hiện tại và trang cuối #}
-      {% if page_obj.number|add:"1" < paginator.num_pages|add:"-1" %}
-      <span style="margin: 0 4px; color: var(--muted); display: flex; align-items: flex-end; height: 28px;">...</span>
-      {% endif %}
-
-      {# Trang cuối #}
-      {% if paginator.num_pages > 1 %}
-        {% if page_obj.number != paginator.num_pages %}
-        <a href="?trang={{ paginator.num_pages }}{% if search_query %}&search={{ search_query }}{% endif %}{% if category_id %}&category={{ category_id }}{% endif %}" class="pg-btn">{{ paginator.num_pages }}</a>
-        {% else %}
-        <span class="pg-btn active">{{ paginator.num_pages }}</span>
-        {% endif %}
-      {% endif %}
-
       {% if page_obj.has_next %}
-      <a href="?trang={{ page_obj.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if category_id %}&category={{ category_id }}{% endif %}" class="pg-btn">›</a>
+      <a href="?page={{ page_obj.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if category_id %}&category={{ category_id }}{% endif %}" class="pg-btn">›</a>
       {% else %}
       <span class="pg-btn disabled">›</span>
       {% endif %}
@@ -244,9 +216,9 @@
   {% if messages %}{% for message in messages %}
   <div class="toast show {% if message.tags == 'error' %}danger{% else %}success{% endif %}">
     {% if message.tags == 'error' %}
-    <svg class="toast-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
     {% else %}
-    <svg class="toast-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
     {% endif %}
     <span>{{ message }}</span>
   </div>
@@ -297,17 +269,13 @@
 </div>
 
 <script>
-// Dữ liệu tồn kho từ server — liên kết trực tiếp với ProductStock
 const STOCK_MAP = {{ stock_map_json|safe }};
 
-// Hàm cập nhật trạng thái dựa trên tồn kho thực tế
 function renderStockStatus() {
   document.querySelectorAll('.stock-cell').forEach(cell => {
     const pid = cell.dataset.productId;
     const unit = cell.dataset.unit || '';
     const qty = STOCK_MAP[pid] !== undefined ? STOCK_MAP[pid] : null;
-
-    // Cột tồn kho
     if (qty === null) {
       cell.innerHTML = `<span style="color:var(--muted);font-size:12px;">Chưa nhập</span>`;
     } else {
@@ -318,10 +286,8 @@ function renderStockStatus() {
   document.querySelectorAll('.status-cell').forEach(cell => {
     const pid = cell.dataset.productId;
     const qty = STOCK_MAP[pid] !== undefined ? STOCK_MAP[pid] : null;
-
     let badge = '';
     if (qty === null || qty === 0) {
-      // Chưa có trong kho hoặc hết
       badge = `<span class="badge stock-out">Hết hàng</span>`;
     } else if (qty <= 10) {
       badge = `<span class="badge stock-low">Sắp hết</span>`;
@@ -332,7 +298,6 @@ function renderStockStatus() {
   });
 }
 
-// Chạy ngay khi load
 renderStockStatus();
 
 function openModal(type, id, name, catId, unit, price) {
