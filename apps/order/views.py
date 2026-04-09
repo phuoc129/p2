@@ -5,10 +5,14 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib import messages
 from django.utils import timezone
 from django.db.models import Q, Sum
+from django.core.paginator import Paginator
 
 from apps.product.models import Product
 from .services import SalesOrderService, CustomerDebtService
 from .models import SalesOrder, SalesOrderItem, CustomerDebt
+
+
+PAGE_SIZE = 10
 
 
 def _products_json():
@@ -85,6 +89,7 @@ class SalesOrderListView(LoginRequiredMixin, View):
 
         status_filter = request.GET.get('status', '')
         search_query = request.GET.get('search', '')
+        page_number = request.GET.get('page', 1)
 
         if status_filter:
             orders = orders.filter(status=status_filter)
@@ -95,17 +100,20 @@ class SalesOrderListView(LoginRequiredMixin, View):
                 Q(order_code__icontains=search_query)
             )
 
+        paginator = Paginator(orders, PAGE_SIZE)
+        page_obj = paginator.get_page(page_number)
+
         products_data = _products_json()
         stocks_data = _stocks_json()
         stats = _get_sales_order_stats()
 
-        # Tính valid transitions để template biết nút nào disable
         valid_transitions = SalesOrderService.VALID_TRANSITIONS
-        
         user_role = 'ADMIN' if user.is_superuser else user.role
 
         return render(request, 'order/sales_order_list.html', {
-            'orders': orders,
+            'orders': page_obj,
+            'page_obj': page_obj,
+            'paginator': paginator,
             'products_json': json.dumps(products_data, ensure_ascii=False),
             'stocks_json': json.dumps(stocks_data),
             'user_role': user_role,
@@ -119,9 +127,7 @@ class SalesOrderListView(LoginRequiredMixin, View):
         user = request.user
         action = request.POST.get('action', '')
 
-        # --- Cập nhật trạng thái đơn hàng ---
         if action == 'update_status':
-            # Mọi role trừ SALE đều cập nhật được trạng thái
             if user.role == 'SALE' and not user.is_superuser:
                 messages.error(request, 'Bạn không có quyền cập nhật trạng thái đơn hàng.')
                 return redirect('order:sales_list')
@@ -135,7 +141,6 @@ class SalesOrderListView(LoginRequiredMixin, View):
                 return redirect('order:sales_list')
 
             service = SalesOrderService()
-            # Truyền updated_by để tạo phiếu xuất khi cần
             success, msg = service.update_status(order_id, new_status, updated_by=user)
             if success:
                 if new_status == 'WAITING':
@@ -146,7 +151,6 @@ class SalesOrderListView(LoginRequiredMixin, View):
                 messages.error(request, msg)
             return redirect('order:sales_list')
 
-        # --- Sale tạo đơn hàng ---
         if user.role not in ('SALE', 'ADMIN') and not user.is_superuser:
             messages.error(request, 'Bạn không có quyền tạo đơn hàng.')
             return redirect('order:sales_list')
@@ -188,20 +192,24 @@ class CustomerDebtListView(LoginRequiredMixin, View):
         service = CustomerDebtService()
         status_filter = request.GET.get('status', '')
         search = request.GET.get('search', '')
+        page_number = request.GET.get('page', 1)
 
         debts = service.get_all(status=status_filter or None, search=search or None)
-        
-        # Lấy data thống kê từ service chuẩn MVC
-        stats = service.get_stats() 
+
+        paginator = Paginator(debts, PAGE_SIZE)
+        page_obj = paginator.get_page(page_number)
+
+        stats = service.get_stats()
 
         return render(request, 'order/customer_debt_list.html', {
-            'debts': debts,
+            'debts': page_obj,
+            'page_obj': page_obj,
+            'paginator': paginator,
             'status_filter': status_filter,
             'search_query': search,
             'user_role': request.user.role,
             'stats': stats,
         })
-
 
     def post(self, request):
         if request.user.role not in ('KE_TOAN', 'ADMIN') and not request.user.is_superuser:

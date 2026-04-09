@@ -16,7 +16,7 @@
 .search-form{display:flex;align-items:center;gap:8px;}
 .search-form input{padding:8px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;font-size:13px;color:var(--text);outline:none;transition:border-color .15s;width:280px;}
 .search-form input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(232,164,39,.08);}
-.search-form button{padding:8px 14px;background:var(--accent);color:#0e0f11;border:none;border-radius:8px;font-weight:600;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:6px;}
+.search-form button{padding:8px 14px;background:var(--accent);color:#0e0f11;border:none;border-radius:8px;font-weight:600;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:5px;}
 .search-form button:hover{filter:brightness(1.1);}
 .filter-search-row{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:20px;}
 .stats-bar{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:24px;}
@@ -48,16 +48,20 @@
 .toast.success{border-left:3px solid var(--success);}
 .toast.warning{border-left:3px solid var(--warning);}
 .toast.danger{border-left:3px solid var(--danger);}
-/* Status action buttons */
 .status-actions{display:flex;gap:4px;flex-wrap:wrap;align-items:center;}
 .status-btn{padding:4px 10px;border-radius:5px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid;background:none;transition:all .15s;white-space:nowrap;display:inline-flex;align-items:center;gap:4px;}
 .status-btn.waiting{color:var(--warning);border-color:rgba(245,158,11,.3);}
 .status-btn.waiting:hover{background:rgba(245,158,11,.12);}
 .status-btn.cancel{color:var(--danger);border-color:rgba(239,68,68,.3);}
 .status-btn.cancel:hover{background:rgba(239,68,68,.12);}
-.status-btn:disabled{opacity:.3;cursor:not-allowed;pointer-events:none;}
-/* Tooltip hint */
 .flow-hint{font-size:11px;color:var(--muted);font-style:italic;}
+/* Pagination */
+.pagination-wrap{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-top:1px solid var(--border);}
+.pagination{display:flex;gap:4px;}
+.pg-btn{min-width:32px;height:32px;padding:0 8px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:12px;color:var(--muted2);text-decoration:none;transition:all .15s;}
+.pg-btn:hover{background:var(--surface3);color:var(--text);}
+.pg-btn.active{background:var(--accent);border-color:var(--accent);color:#0e0f11;font-weight:700;}
+.pg-btn.disabled{opacity:.4;cursor:not-allowed;pointer-events:none;}
 {% endblock %}
 
 {% block content %}
@@ -95,13 +99,13 @@
     {% if status_filter %}<input type="hidden" name="status" value="{{ status_filter }}">{% endif %}
     <input type="text" name="search" placeholder="Tìm mã đơn hoặc khách hàng..." value="{{ search_query }}">
     <button type="submit">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
       Tìm
     </button>
   </form>
 </div>
 
-<!-- Hidden form dùng để update status -->
+<!-- Hidden form update status -->
 <form id="status-update-form" method="POST" action="{% url 'order:sales_list' %}" style="display:none;">
   {% csrf_token %}
   <input type="hidden" name="action" value="update_status">
@@ -109,7 +113,7 @@
   <input type="hidden" name="status" id="status-value">
 </form>
 
-<!-- Modal: Xác nhận cập nhật trạng thái -->
+<!-- Modal xác nhận cập nhật trạng thái -->
 <div class="modal-backdrop" id="modal-confirm-status">
   <div class="modal modal-sm">
     <div class="modal-header">
@@ -120,13 +124,9 @@
       <p id="confirm-message" style="font-size:14px;color:var(--text);line-height:1.6;"></p>
     </div>
     <div class="modal-footer">
-      <button type="button" class="btn btn-ghost" onclick="closeModal('modal-confirm-status')">
-        Hủy
-      </button>
+      <button type="button" class="btn btn-ghost" onclick="closeModal('modal-confirm-status')">Hủy</button>
       <button type="button" class="btn btn-primary" onclick="submitStatusUpdate()">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-          <polyline points="20 6 9 17 4 12"></polyline>
-        </svg>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
         Duyệt
       </button>
     </div>
@@ -159,7 +159,6 @@
 
         {% if user_role != 'SALE' %}
         <td>
-          {# Luồng: CONFIRMED → WAITING | CANCELLED  /  WAITING → DONE | CANCELLED #}
           {% if order.status == 'CONFIRMED' %}
           <div class="status-actions">
             <button type="button" class="status-btn waiting"
@@ -171,18 +170,12 @@
               ✗ Hủy
             </button>
           </div>
-
           {% elif order.status == 'WAITING' %}
-          <div class="status-actions">
-            <span class="flow-hint">→ Chờ xuất kho duyệt</span>
-          </div>
-
+          <span class="flow-hint">→ Chờ xuất kho duyệt</span>
           {% elif order.status == 'DONE' %}
           <span style="font-size:11px;color:var(--success);">✓ Hoàn thành</span>
-
           {% elif order.status == 'CANCELLED' %}
           <span style="font-size:11px;color:var(--danger);">✗ Đã hủy</span>
-
           {% endif %}
         </td>
         {% endif %}
@@ -198,9 +191,39 @@
       {% endfor %}
     </tbody>
   </table>
+
+  {% if paginator.num_pages > 1 %}
+  <div class="pagination-wrap">
+    <span style="font-size:12px;color:var(--muted);">
+      Trang {{ page_obj.number }}/{{ paginator.num_pages }} — {{ paginator.count }} đơn hàng
+    </span>
+    <div class="pagination">
+      {% if page_obj.has_previous %}
+      <a href="?page={{ page_obj.previous_page_number }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}" class="pg-btn">‹</a>
+      {% else %}
+      <span class="pg-btn disabled">‹</span>
+      {% endif %}
+
+      {% for num in paginator.page_range %}
+        {% if num == page_obj.number %}
+          <span class="pg-btn active">{{ num }}</span>
+        {% elif num == 1 or num == paginator.num_pages or num >= page_obj.number|add:"-2" and num <= page_obj.number|add:"2" %}
+          <a href="?page={{ num }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}" class="pg-btn">{{ num }}</a>
+        {% elif num == page_obj.number|add:"-3" or num == page_obj.number|add:"3" %}
+          <span class="pg-btn disabled" style="border:none;background:none;">…</span>
+        {% endif %}
+      {% endfor %}
+
+      {% if page_obj.has_next %}
+      <a href="?page={{ page_obj.next_page_number }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}" class="pg-btn">›</a>
+      {% else %}
+      <span class="pg-btn disabled">›</span>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
 </div>
 
-{# Chú thích luồng trạng thái #}
 <div style="margin-top:12px;padding:12px 16px;background:var(--surface);border:1px solid var(--border);border-radius:8px;font-size:12px;color:var(--muted);">
   <strong style="color:var(--text);">Luồng đơn hàng:</strong>
   <span style="color:var(--info);">Đã xác nhận</span>
@@ -269,27 +292,14 @@ const PRODUCTS = {{ products_json|safe }};
 const STOCKS   = {{ stocks_json|safe }};
 let orderCount = 0;
 
-// Cập nhật trạng thái đơn hàng — mở modal xác nhận
 function updateStatus(orderId, status, orderCode) {
-  const descriptions = {
-    WAITING: 'Chờ lấy hàng (sẽ tạo phiếu xuất kho tự động)',
-    DONE: 'Hoàn thành',
-    CANCELLED: 'Hủy đơn'
-  };
-  
-  // Lưu thông tin vào hidden inputs
   document.getElementById('status-order-id').value = orderId;
   document.getElementById('status-value').value = status;
-  
-  // Cập nhật nội dung modal
   const message = `Duyệt phiếu <strong>${orderCode}</strong>? Tồn kho sẽ được cập nhật ngay lập tức.`;
   document.getElementById('confirm-message').innerHTML = message;
-  
-  // Mở modal xác nhận
   document.getElementById('modal-confirm-status').classList.add('open');
 }
 
-// Submit form cập nhật trạng thái từ modal
 function submitStatusUpdate() {
   document.getElementById('status-update-form').submit();
 }

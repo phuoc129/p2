@@ -5,6 +5,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib import messages
 from django.utils import timezone
 from django.db.models import Sum, Q
+from django.core.paginator import Paginator
 
 from apps.product.models import Product
 from .services import ImportReceiptService, StockService, ExportReceiptService
@@ -63,6 +64,9 @@ def _get_export_receipt_stats():
     }
 
 
+PAGE_SIZE = 10  # Số phiếu mỗi trang
+
+
 # ═══════════════════════════════════════════════════════════════
 # NHẬP KHO
 # ═══════════════════════════════════════════════════════════════
@@ -79,6 +83,7 @@ class ImportReceiptListView(LoginRequiredMixin, View):
 
         status_filter = request.GET.get('status', '')
         search_query = request.GET.get('search', '')
+        page_number = request.GET.get('page', 1)
 
         if status_filter:
             receipts = receipts.filter(status=status_filter)
@@ -89,13 +94,18 @@ class ImportReceiptListView(LoginRequiredMixin, View):
                 Q(note__icontains=search_query)
             )
 
+        paginator = Paginator(receipts, PAGE_SIZE)
+        page_obj = paginator.get_page(page_number)
+
         products_data = _products_json()
         stats = _get_import_receipt_stats()
 
         user_role = 'ADMIN' if user.is_superuser else user.role
 
         return render(request, 'warehouse/import_receipt_list.html', {
-            'receipts': receipts,
+            'receipts': page_obj,
+            'page_obj': page_obj,
+            'paginator': paginator,
             'products_json': json.dumps(products_data, ensure_ascii=False),
             'status_filter': status_filter,
             'search_query': search_query,
@@ -193,9 +203,25 @@ class ImportReceiptResubmitView(LoginRequiredMixin, View):
 class StockListView(LoginRequiredMixin, View):
     def get(self, request):
         service = StockService()
-        stocks = service.get_all_stocks()
+        search_query = request.GET.get('search', '')
+        page_number = request.GET.get('page', 1)
+
+        stocks_qs = service.get_all_stocks()
+
+        if search_query:
+            stocks_qs = stocks_qs.filter(
+                Q(product__name__icontains=search_query) |
+                Q(product__category__name__icontains=search_query)
+            )
+
+        paginator = Paginator(stocks_qs, 5)  # 5 cards mỗi trang
+        page_obj = paginator.get_page(page_number)
+
         return render(request, 'warehouse/stock_list.html', {
-            'stocks': stocks,
+            'stocks': page_obj,
+            'page_obj': page_obj,
+            'paginator': paginator,
+            'search_query': search_query,
             'user_role': 'ADMIN' if request.user.is_superuser else request.user.role,
         })
 
@@ -204,7 +230,6 @@ class StockListView(LoginRequiredMixin, View):
 # XUẤT KHO — Tất cả role đều có thể duyệt
 # ═══════════════════════════════════════════════════════════════
 
-# TẤT CẢ role đều được duyệt/từ chối xuất kho
 EXPORT_APPROVE_ROLES = ('KHO', 'KE_TOAN', 'ADMIN', 'SALE')
 
 
@@ -213,11 +238,11 @@ class ExportReceiptListView(LoginRequiredMixin, View):
         service = ExportReceiptService()
         user = request.user
 
-        # Tất cả đều thấy tất cả phiếu xuất
         receipts = service.get_all()
 
         status_filter = request.GET.get('status', '')
         search_query = request.GET.get('search', '')
+        page_number = request.GET.get('page', 1)
 
         if status_filter:
             receipts = receipts.filter(status=status_filter)
@@ -228,11 +253,16 @@ class ExportReceiptListView(LoginRequiredMixin, View):
                 Q(note__icontains=search_query)
             )
 
+        paginator = Paginator(receipts, PAGE_SIZE)
+        page_obj = paginator.get_page(page_number)
+
         products_data = _products_json()
         stats = _get_export_receipt_stats()
 
         return render(request, 'warehouse/export_receipt_list.html', {
-            'receipts': receipts,
+            'receipts': page_obj,
+            'page_obj': page_obj,
+            'paginator': paginator,
             'products_json': json.dumps(products_data, ensure_ascii=False),
             'status_filter': status_filter,
             'search_query': search_query,
@@ -241,7 +271,6 @@ class ExportReceiptListView(LoginRequiredMixin, View):
         })
 
     def post(self, request):
-        """KHO và ADMIN tạo phiếu xuất thủ công"""
         if request.user.role not in ('KHO', 'ADMIN') and not request.user.is_superuser:
             messages.error(request, 'Bạn không có quyền tạo phiếu xuất kho.')
             return redirect('warehouse:export_list')
@@ -276,7 +305,6 @@ class ExportReceiptDetailView(LoginRequiredMixin, View):
 
 
 class ExportReceiptApproveView(LoginRequiredMixin, View):
-    """Tất cả role đều duyệt được"""
     def post(self, request, pk):
         service = ExportReceiptService()
         success, msg = service.approve_receipt(pk, request.user)
@@ -288,7 +316,6 @@ class ExportReceiptApproveView(LoginRequiredMixin, View):
 
 
 class ExportReceiptRejectView(LoginRequiredMixin, View):
-    """Tất cả role đều từ chối được"""
     def post(self, request, pk):
         service = ExportReceiptService()
         rejection_note = request.POST.get('rejection_note', '')
@@ -301,7 +328,6 @@ class ExportReceiptRejectView(LoginRequiredMixin, View):
 
 
 class ExportReceiptResubmitView(LoginRequiredMixin, View):
-    """KHO, ADMIN sửa & gửi lại phiếu bị từ chối"""
     def post(self, request, pk):
         if request.user.role not in ('KHO', 'ADMIN') and not request.user.is_superuser:
             messages.error(request, 'Bạn không có quyền gửi lại phiếu.')

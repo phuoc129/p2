@@ -8,18 +8,16 @@
 .status-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:5px;font-size:11px;font-weight:600;}
 .status-badge.PENDING{background:rgba(245,158,11,.12);color:var(--warning);}
 .status-badge.PAID{background:rgba(34,197,94,.12);color:var(--success);}
-.filter-tabs{display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;}
+.filter-tabs{display:flex;gap:8px;flex-wrap:wrap;}
 .filter-tab{padding:6px 16px;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--border);background:var(--surface);color:var(--muted2);text-decoration:none;transition:all .15s;}
 .filter-tab:hover,.filter-tab.active{background:rgba(232,164,39,.12);border-color:rgba(232,164,39,.3);color:var(--accent);}
 .search-form{display:flex;align-items:center;gap:8px;}
-.search-form input{padding:8px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;font-size:13px;color:var(--text);outline:none;transition:border-color .15s;width:320px;}
+.search-form input{padding:8px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;font-size:13px;color:var(--text);outline:none;transition:border-color .15s;width:280px;}
 .search-form input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(232,164,39,.08);}
-.search-form button{padding:8px 16px;background:var(--accent);color:black;border:none;border-radius:8px;font-weight:600;cursor:pointer;transition:all .15s;}
-.search-form button:hover{opacity:1;filter:brightness(1.15);box-shadow:0 2px 8px rgba(232,164,39,.3);}
-.filter-search-row{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;margin-bottom:20px;}
-.filter-search-row .filter-tabs{margin:0;}
-.filter-search-row .search-form{margin:0;}
-.stats-bar{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;margin-bottom:24px;}
+.search-form button{padding:8px 14px;background:var(--accent);color:#0e0f11;border:none;border-radius:8px;font-weight:600;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:5px;}
+.search-form button:hover{filter:brightness(1.1);}
+.filter-search-row{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:20px;}
+.stats-bar{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:24px;}
 .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:20px;text-align:center;}
 .stat-label{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;}
 .stat-value{font-size:32px;font-weight:700;color:var(--accent);font-family:Google Sans Flex,sans-serif;}
@@ -28,6 +26,13 @@
 .toast.show{transform:translateX(0);opacity:1;}
 .toast.success{border-left:3px solid var(--success);}
 .toast.danger{border-left:3px solid var(--danger);}
+/* Pagination */
+.pagination-wrap{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-top:1px solid var(--border);}
+.pagination{display:flex;gap:4px;}
+.pg-btn{min-width:32px;height:32px;padding:0 8px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:12px;color:var(--muted2);text-decoration:none;transition:all .15s;}
+.pg-btn:hover{background:var(--surface3);color:var(--text);}
+.pg-btn.active{background:var(--accent);border-color:var(--accent);color:#0e0f11;font-weight:700;}
+.pg-btn.disabled{opacity:.4;cursor:not-allowed;pointer-events:none;}
 {% endblock %}
 
 {% block content %}
@@ -49,8 +54,8 @@
     <div class="stat-value">{{ stats.pending_orders|floatformat:0 }}</div>
   </div>
   <div class="stat-card">
-    <div class="stat-label">Tổng Nợ</div>
-    <div class="stat-value">{{ stats.total_debt|floatformat:0 }}</div>
+    <div class="stat-label">Tổng Nợ (đ)</div>
+    <div class="stat-value" style="font-size:22px;">{{ stats.total_debt|floatformat:0 }}</div>
   </div>
   <div class="stat-card">
     <div class="stat-label">Giao Dịch Hôm Nay</div>
@@ -60,14 +65,15 @@
 
 <div class="filter-search-row">
   <div class="filter-tabs">
-  <a href="?status=" class="filter-tab {% if not status_filter %}active{% endif %}">Tất cả</a>
-  <a href="?status=PENDING" class="filter-tab {% if status_filter == 'PENDING' %}active{% endif %}">⏳ Chưa thanh toán</a>
-  <a href="?status=PAID"    class="filter-tab {% if status_filter == 'PAID'    %}active{% endif %}">✅ Đã thanh toán</a>
+    <a href="?status={% if search_query %}&search={{ search_query }}{% endif %}" class="filter-tab {% if not status_filter %}active{% endif %}">Tất cả</a>
+    <a href="?status=PENDING{% if search_query %}&search={{ search_query }}{% endif %}" class="filter-tab {% if status_filter == 'PENDING' %}active{% endif %}">⏳ Chưa thanh toán</a>
+    <a href="?status=PAID{% if search_query %}&search={{ search_query }}{% endif %}"    class="filter-tab {% if status_filter == 'PAID'    %}active{% endif %}">✅ Đã thanh toán</a>
   </div>
   <form method="get" class="search-form">
-    <input type="text" name="search" placeholder="Tìm kiếm theo tên khách hàng..." value="{{ search_query }}" />
-    <button type="submit" style="display:flex;align-items:center;gap:6px;">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+    {% if status_filter %}<input type="hidden" name="status" value="{{ status_filter }}">{% endif %}
+    <input type="text" name="search" placeholder="Tìm theo tên khách hàng..." value="{{ search_query }}">
+    <button type="submit">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
       Tìm
     </button>
   </form>
@@ -120,6 +126,37 @@
       {% endfor %}
     </tbody>
   </table>
+
+  {% if paginator.num_pages > 1 %}
+  <div class="pagination-wrap">
+    <span style="font-size:12px;color:var(--muted);">
+      Trang {{ page_obj.number }}/{{ paginator.num_pages }} — {{ paginator.count }} công nợ
+    </span>
+    <div class="pagination">
+      {% if page_obj.has_previous %}
+      <a href="?page={{ page_obj.previous_page_number }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}" class="pg-btn">‹</a>
+      {% else %}
+      <span class="pg-btn disabled">‹</span>
+      {% endif %}
+
+      {% for num in paginator.page_range %}
+        {% if num == page_obj.number %}
+          <span class="pg-btn active">{{ num }}</span>
+        {% elif num == 1 or num == paginator.num_pages or num >= page_obj.number|add:"-2" and num <= page_obj.number|add:"2" %}
+          <a href="?page={{ num }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}" class="pg-btn">{{ num }}</a>
+        {% elif num == page_obj.number|add:"-3" or num == page_obj.number|add:"3" %}
+          <span class="pg-btn disabled" style="border:none;background:none;">…</span>
+        {% endif %}
+      {% endfor %}
+
+      {% if page_obj.has_next %}
+      <a href="?page={{ page_obj.next_page_number }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}" class="pg-btn">›</a>
+      {% else %}
+      <span class="pg-btn disabled">›</span>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
 </div>
 {% endblock %}
 

@@ -9,18 +9,16 @@
 .status-badge.PENDING  { background:rgba(245,158,11,.12);color:var(--warning); }
 .status-badge.APPROVED { background:rgba(34,197,94,.12);color:var(--success); }
 .status-badge.REJECTED { background:rgba(239,68,68,.12);color:var(--danger); }
-.filter-tabs { display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap; }
-.filter-tab { padding:6px 16px;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--border);background:var(--surface);color:var(--muted2);text-decoration:none;transition:all .15s; }
-.filter-tab:hover,.filter-tab.active { background:rgba(232,164,39,.12);border-color:rgba(232,164,39,.3);color:var(--accent); }
+.filter-tabs{display:flex;gap:8px;flex-wrap:wrap;}
+.filter-tab{padding:6px 16px;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--border);background:var(--surface);color:var(--muted2);text-decoration:none;transition:all .15s;}
+.filter-tab:hover,.filter-tab.active{background:rgba(232,164,39,.12);border-color:rgba(232,164,39,.3);color:var(--accent);}
 .search-form{display:flex;align-items:center;gap:8px;}
-.search-form input{padding:8px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;font-size:13px;color:var(--text);outline:none;transition:border-color .15s;width:320px;}
+.search-form input{padding:8px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;font-size:13px;color:var(--text);outline:none;transition:border-color .15s;width:280px;}
 .search-form input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(232,164,39,.08);}
-.search-form button{padding:8px 16px;background:var(--accent);color:black;border:none;border-radius:8px;font-weight:600;cursor:pointer;transition:all .15s;}
-.search-form button:hover{opacity:1;filter:brightness(1.15);box-shadow:0 2px 8px rgba(232,164,39,.3);}
-.filter-search-row{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;margin-bottom:20px;}
-.filter-search-row .filter-tabs{margin:0;}
-.filter-search-row .search-form{margin:0;}
-.stats-bar{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;margin-bottom:24px;}
+.search-form button{padding:8px 14px;background:var(--accent);color:#0e0f11;border:none;border-radius:8px;font-weight:600;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:5px;}
+.search-form button:hover{filter:brightness(1.1);}
+.filter-search-row{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:20px;}
+.stats-bar{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:24px;}
 .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:20px;text-align:center;}
 .stat-label{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;}
 .stat-value{font-size:32px;font-weight:700;color:var(--accent);font-family:Google Sans Flex,sans-serif;}
@@ -53,10 +51,16 @@
 .toast.success{border-left:3px solid var(--success);}
 .toast.warning{border-left:3px solid var(--warning);}
 .toast.danger{border-left:3px solid var(--danger);}
+/* Pagination */
+.pagination-wrap{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-top:1px solid var(--border);}
+.pagination{display:flex;gap:4px;}
+.pg-btn{min-width:32px;height:32px;padding:0 8px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:12px;color:var(--muted2);text-decoration:none;transition:all .15s;}
+.pg-btn:hover{background:var(--surface3);color:var(--text);}
+.pg-btn.active{background:var(--accent);border-color:var(--accent);color:#0e0f11;font-weight:700;}
+.pg-btn.disabled{opacity:.4;cursor:not-allowed;pointer-events:none;}
 {% endblock %}
 
 {% block content %}
-{# Truyền URL pattern vào JS qua data attributes - tránh hardcode #}
 <div id="url-data"
   data-approve-url="{% url 'warehouse:export_approve' pk='00000000-0000-0000-0000-000000000000' %}"
   data-reject-url="{% url 'warehouse:export_reject' pk='00000000-0000-0000-0000-000000000000' %}"
@@ -77,37 +81,25 @@
   {% endif %}
 </div>
 
-<!-- Stats Bar -->
 <div class="stats-bar">
-  <div class="stat-card">
-    <div class="stat-label">Tổng Phiếu</div>
-    <div class="stat-value">{{ stats.total_receipts|floatformat:0 }}</div>
-  </div>
-  <div class="stat-card">
-    <div class="stat-label">Phiếu Chờ Duyệt</div>
-    <div class="stat-value">{{ stats.pending_receipts|floatformat:0 }}</div>
-  </div>
-  <div class="stat-card">
-    <div class="stat-label">Tổng Số SP</div>
-    <div class="stat-value">{{ stats.total_items|floatformat:0 }}</div>
-  </div>
-  <div class="stat-card">
-    <div class="stat-label">Giao Dịch Hôm Nay</div>
-    <div class="stat-value">{{ stats.today_transactions|floatformat:0 }}</div>
-  </div>
+  <div class="stat-card"><div class="stat-label">Tổng Phiếu</div><div class="stat-value">{{ stats.total_receipts|floatformat:0 }}</div></div>
+  <div class="stat-card"><div class="stat-label">Phiếu Chờ Duyệt</div><div class="stat-value">{{ stats.pending_receipts|floatformat:0 }}</div></div>
+  <div class="stat-card"><div class="stat-label">Tổng Số SP</div><div class="stat-value">{{ stats.total_items|floatformat:0 }}</div></div>
+  <div class="stat-card"><div class="stat-label">Giao Dịch Hôm Nay</div><div class="stat-value">{{ stats.today_transactions|floatformat:0 }}</div></div>
 </div>
 
 <div class="filter-search-row">
   <div class="filter-tabs">
-  <a href="?status=" class="filter-tab {% if not status_filter %}active{% endif %}">Tất cả</a>
-  <a href="?status=PENDING"  class="filter-tab {% if status_filter == 'PENDING'  %}active{% endif %}">⏳ Chờ duyệt</a>
-  <a href="?status=APPROVED" class="filter-tab {% if status_filter == 'APPROVED' %}active{% endif %}">✅ Đã duyệt</a>
-  <a href="?status=REJECTED" class="filter-tab {% if status_filter == 'REJECTED' %}active{% endif %}">❌ Từ chối</a>
+    <a href="?status={% if search_query %}&search={{ search_query }}{% endif %}" class="filter-tab {% if not status_filter %}active{% endif %}">Tất cả</a>
+    <a href="?status=PENDING{% if search_query %}&search={{ search_query }}{% endif %}"  class="filter-tab {% if status_filter == 'PENDING'  %}active{% endif %}">⏳ Chờ duyệt</a>
+    <a href="?status=APPROVED{% if search_query %}&search={{ search_query }}{% endif %}" class="filter-tab {% if status_filter == 'APPROVED' %}active{% endif %}">✅ Đã duyệt</a>
+    <a href="?status=REJECTED{% if search_query %}&search={{ search_query }}{% endif %}" class="filter-tab {% if status_filter == 'REJECTED' %}active{% endif %}">❌ Từ chối</a>
   </div>
   <form method="get" class="search-form">
-    <input type="text" name="search" placeholder="Tìm kiếm theo mã phiếu..." value="{{ search_query }}" />
-    <button type="submit" style="display:flex;align-items:center;gap:6px;">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+    {% if status_filter %}<input type="hidden" name="status" value="{{ status_filter }}">{% endif %}
+    <input type="text" name="search" placeholder="Tìm theo mã phiếu, ghi chú..." value="{{ search_query }}">
+    <button type="submit">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
       Tìm
     </button>
   </form>
@@ -155,8 +147,6 @@
               </button>
               {% endif %}
             {% endif %}
-
-            
           </div>
         </td>
       </tr>
@@ -165,6 +155,37 @@
       {% endfor %}
     </tbody>
   </table>
+
+  {% if paginator.num_pages > 1 %}
+  <div class="pagination-wrap">
+    <span style="font-size:12px;color:var(--muted);">
+      Trang {{ page_obj.number }}/{{ paginator.num_pages }} — {{ paginator.count }} phiếu
+    </span>
+    <div class="pagination">
+      {% if page_obj.has_previous %}
+      <a href="?page={{ page_obj.previous_page_number }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}" class="pg-btn">‹</a>
+      {% else %}
+      <span class="pg-btn disabled">‹</span>
+      {% endif %}
+
+      {% for num in paginator.page_range %}
+        {% if num == page_obj.number %}
+          <span class="pg-btn active">{{ num }}</span>
+        {% elif num == 1 or num == paginator.num_pages or num >= page_obj.number|add:"-2" and num <= page_obj.number|add:"2" %}
+          <a href="?page={{ num }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}" class="pg-btn">{{ num }}</a>
+        {% elif num == page_obj.number|add:"-3" or num == page_obj.number|add:"3" %}
+          <span class="pg-btn disabled" style="border:none;background:none;">…</span>
+        {% endif %}
+      {% endfor %}
+
+      {% if page_obj.has_next %}
+      <a href="?page={{ page_obj.next_page_number }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}" class="pg-btn">›</a>
+      {% else %}
+      <span class="pg-btn disabled">›</span>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
 </div>
 {% endblock %}
 
@@ -175,7 +196,7 @@
   {% endfor %}{% endif %}
 </div>
 
-<!-- ── Modal: Tạo phiếu xuất ── -->
+<!-- Modal: Tạo phiếu xuất -->
 <div class="modal-backdrop" id="modal-create">
   <form class="modal" method="POST" action="{% url 'warehouse:export_list' %}" id="create-form">
     {% csrf_token %}
@@ -210,7 +231,7 @@
   </form>
 </div>
 
-<!-- ── Modal: Duyệt phiếu ── -->
+<!-- Modal: Duyệt phiếu -->
 <div class="modal-backdrop" id="modal-approve">
   <form class="modal modal-sm" method="POST" id="approve-form">
     {% csrf_token %}
@@ -229,7 +250,7 @@
   </form>
 </div>
 
-<!-- ── Modal: Từ chối phiếu ── -->
+<!-- Modal: Từ chối phiếu -->
 <div class="modal-backdrop" id="modal-reject">
   <form class="modal modal-sm" method="POST" id="reject-form">
     {% csrf_token %}
@@ -249,7 +270,7 @@
   </form>
 </div>
 
-<!-- ── Modal: Xem chi tiết ── -->
+<!-- Modal: Xem chi tiết -->
 <div class="modal-backdrop" id="modal-view">
   <div class="modal" id="modal-view-content">
     <div class="modal-header">
@@ -260,57 +281,16 @@
   </div>
 </div>
 
-<!-- ── Modal: Sửa & gửi lại ── -->
-<div class="modal-backdrop" id="modal-resubmit">
-  <form class="modal" method="POST" id="resubmit-form">
-    {% csrf_token %}
-    <div class="modal-header">
-      <span class="modal-title">Sửa & gửi lại phiếu</span>
-      <button type="button" class="modal-close" onclick="closeModal('modal-resubmit')">✕</button>
-    </div>
-    <div class="rejection-box" id="resubmit-rejection-box">
-      <div class="rejection-label">Lý do bị từ chối:</div>
-      <div id="resubmit-rejection-note"></div>
-    </div>
-    <div class="field">
-      <label class="field-label">Lý do xuất kho</label>
-      <textarea name="note" id="resubmit-note" placeholder="Ghi lý do sau khi sửa..."></textarea>
-    </div>
-    <div style="margin-bottom:12px;">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-        <span style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">Danh sách sản phẩm</span>
-        <button type="button" class="btn btn-ghost" style="padding:5px 12px;font-size:12px;" onclick="addResubmitRow()">+ Thêm dòng</button>
-      </div>
-      <table class="items-table">
-        <thead><tr>
-          <th style="width:38%">Sản phẩm</th><th style="width:18%">Số lượng</th>
-          <th style="width:14%">Đơn vị</th><th style="width:22%">Đơn giá</th><th style="width:8%"></th>
-        </tr></thead>
-        <tbody id="resubmit-items-body"></tbody>
-      </table>
-    </div>
-    <div class="modal-footer">
-      <button type="button" class="btn btn-ghost" onclick="closeModal('modal-resubmit')">Hủy</button>
-      <button type="submit" class="btn btn-primary">Gửi lại duyệt</button>
-    </div>
-  </form>
-</div>
-
 <script>
 const PRODUCTS = {{ products_json|safe }};
 let itemCount = 0;
-let resubmitCount = 0;
 
-// Lấy URL templates từ data attributes (đúng cách, không hardcode)
 const urlData = document.getElementById('url-data');
 const APPROVE_URL_TPL  = urlData.dataset.approveUrl;
 const REJECT_URL_TPL   = urlData.dataset.rejectUrl;
-const RESUBMIT_URL_TPL = urlData.dataset.resubmitUrl;
 const FAKE_UUID = '00000000-0000-0000-0000-000000000000';
 
-function makeUrl(tpl, id) {
-  return tpl.replace(FAKE_UUID, id);
-}
+function makeUrl(tpl, id) { return tpl.replace(FAKE_UUID, id); }
 
 const RECEIPTS = [
   {% for r in receipts %}
@@ -340,18 +320,23 @@ const RECEIPTS = [
   {% endfor %}
 ];
 
-function buildProductOptions(selectedId='') {
+function buildProductOpts(selectedId='') {
   return `<option value="">-- Chọn sản phẩm --</option>` +
     PRODUCTS.map(p =>
       `<option value="${p.id}" data-unit="${p.base_unit}" ${p.id===selectedId?'selected':''}>${p.name} (${p.category})</option>`
     ).join('');
 }
 
+function updateUnit(selectEl, spanId) {
+  const opt = selectEl.options[selectEl.selectedIndex];
+  document.getElementById(spanId).textContent = opt.dataset.unit || '';
+}
+
 function buildItemRow(prefix, i, productId='', qty='', price='', unit='') {
   return `<tr id="${prefix}-row-${i}">
-    <td><select name="product_id_${i}" onchange="updateUnit(this,'${prefix}-unit-${i}')">${buildProductOptions(productId)}</select></td>
+    <td><select name="product_id_${i}" onchange="updateUnit(this,'${prefix}-unit-${i}')">${buildProductOpts(productId)}</select></td>
     <td><input type="number" name="quantity_${i}" value="${qty}" min="0.01" step="0.01" placeholder="0"></td>
-    <td><span id="${prefix}-unit-${i}" style="font-size:13px;color:var(--muted2);">${unit}</span></td>
+    <td><span id="${prefix}-unit-${i}" style="font-size:13px;color:var(--muted2);">${unit || '—'}</span></td>
     <td><input type="number" name="unit_price_${i}" value="${price}" min="0" step="0.01" placeholder="0"></td>
     <td><button type="button" class="btn-icon" onclick="this.closest('tr').remove()">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -361,18 +346,9 @@ function buildItemRow(prefix, i, productId='', qty='', price='', unit='') {
   </tr>`;
 }
 
-function updateUnit(selectEl, spanId) {
-  const opt = selectEl.options[selectEl.selectedIndex];
-  document.getElementById(spanId).textContent = opt.dataset.unit || '';
-}
-
 function addItemRow() {
   document.getElementById('items-body').insertAdjacentHTML('beforeend', buildItemRow('create', itemCount));
   itemCount++;
-}
-function addResubmitRow() {
-  document.getElementById('resubmit-items-body').insertAdjacentHTML('beforeend', buildItemRow('resubmit', resubmitCount));
-  resubmitCount++;
 }
 
 function openCreateModal() {
@@ -394,15 +370,6 @@ function openRejectModal(id, code) {
   document.getElementById('modal-reject').classList.add('open');
 }
 
-function openResubmitModal(id, code, rejectionNote) {
-  document.getElementById('resubmit-rejection-note').textContent = rejectionNote || '(Không có ghi chú)';
-  document.getElementById('resubmit-form').action = makeUrl(RESUBMIT_URL_TPL, id);
-  document.getElementById('resubmit-items-body').innerHTML = '';
-  resubmitCount = 0;
-  addResubmitRow();
-  document.getElementById('modal-resubmit').classList.add('open');
-}
-
 function viewReceipt(id) {
   const r = RECEIPTS.find(x => x.id === id);
   if (!r) return;
@@ -419,7 +386,7 @@ function viewReceipt(id) {
 
   let itemsHtml = r.items.map(item => `<tr>
     <td>${item.product}</td><td>${item.qty}</td><td>${item.unit}</td>
-    <td>${item.price ? Number(item.price).toLocaleString()+'đ' : '—'}</td>
+    <td>${item.price ? Number(item.price).toLocaleString('vi-VN')+'đ' : '—'}</td>
     <td style="color:var(--muted)">${item.note||''}</td>
   </tr>`).join('');
 
