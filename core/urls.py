@@ -17,6 +17,8 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 from . import views
+from django.conf import settings
+from django.conf.urls.static import static
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -35,3 +37,30 @@ urlpatterns = [
     path('units/', views.units_view, name='units'),
     # path('accounts/', views.accounts_view, name='accounts'),
 ]
+from django.contrib import admin
+from django.urls import path, include
+from django.conf import settings
+from django.conf.urls.static import static
+from . import views
+
+urlpatterns = [
+    path('admin/', admin.site.urls),
+    path('health/', views.health_check, name='health_check'),
+
+    # Auth
+    path('', views.login_view, name='login'),
+    path('logout/', views.logout_view, name='logout'),
+
+    # Main pages
+    path('dashboard/', views.dashboard_view, name='dashboard'),
+
+    # App product
+    path('', include('apps.product.urls')),
+
+    path('units/', views.units_view, name='units'),
+]
+
+# Phục vụ file media khi DEBUG=True
+# Dòng này PHẢI nằm NGOÀI urlpatterns = [...], không được nằm bên trong
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
