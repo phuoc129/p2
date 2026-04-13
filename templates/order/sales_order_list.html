@@ -13,12 +13,18 @@
 .filter-tabs{display:flex;gap:8px;flex-wrap:wrap;}
 .filter-tab{padding:6px 16px;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--border);background:var(--surface);color:var(--muted2);text-decoration:none;transition:all .15s;}
 .filter-tab:hover,.filter-tab.active{background:rgba(232,164,39,.12);border-color:rgba(232,164,39,.3);color:var(--accent);}
-.search-form{display:flex;align-items:center;gap:8px;}
-.search-form input{padding:8px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;font-size:13px;color:var(--text);outline:none;transition:border-color .15s;width:280px;}
+.search-form{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end;}
+.search-form input{padding:8px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;font-size:13px;color:var(--text);outline:none;transition:border-color .15s;}
+.search-form input[type="text"]{width:280px;}
+.search-form input[type="date"]{width:165px;}
 .search-form input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(232,164,39,.08);}
 .search-form button{padding:8px 14px;background:var(--accent);color:#0e0f11;border:none;border-radius:8px;font-weight:600;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:5px;}
 .search-form button:hover{filter:brightness(1.1);}
+.search-form button.secondary{background:var(--surface2);color:var(--text);border:1px solid var(--border);}
+.search-form button.secondary:hover{background:var(--surface3);filter:none;}
+.search-form button[disabled]{opacity:.45;cursor:not-allowed;pointer-events:none;}
 .filter-search-row{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:20px;}
+.filter-error{width:100%;font-size:12px;color:var(--danger);font-weight:600;}
 .stats-bar{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:24px;}
 .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:20px;text-align:center;}
 .stat-label{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;}
@@ -93,20 +99,45 @@
 <!-- Filter + Search -->
 <div class="filter-search-row">
   <div class="filter-tabs">
-    <a href="?status={% if search_query %}&search={{ search_query }}{% endif %}" class="filter-tab {% if not status_filter %}active{% endif %}">Tất cả</a>
-    <a href="?status=CONFIRMED{% if search_query %}&search={{ search_query }}{% endif %}" class="filter-tab {% if status_filter == 'CONFIRMED' %}active{% endif %}">✅ Đã xác nhận</a>
-    <a href="?status=WAITING{% if search_query %}&search={{ search_query }}{% endif %}" class="filter-tab {% if status_filter == 'WAITING' %}active{% endif %}">⏳ Chờ lấy hàng</a>
-    <a href="?status=DONE{% if search_query %}&search={{ search_query }}{% endif %}" class="filter-tab {% if status_filter == 'DONE' %}active{% endif %}">🎉 Hoàn thành</a>
-    <a href="?status=CANCELLED{% if search_query %}&search={{ search_query }}{% endif %}" class="filter-tab {% if status_filter == 'CANCELLED' %}active{% endif %}">❌ Đã hủy</a>
+    <a href="?status={% if search_query %}&search={{ search_query }}{% endif %}&from_date={{ from_date }}&to_date={{ to_date }}" class="filter-tab {% if not status_filter %}active{% endif %}">Tất cả</a>
+    <a href="?status=CONFIRMED{% if search_query %}&search={{ search_query }}{% endif %}&from_date={{ from_date }}&to_date={{ to_date }}" class="filter-tab {% if status_filter == 'CONFIRMED' %}active{% endif %}">✅ Đã xác nhận</a>
+    <a href="?status=WAITING{% if search_query %}&search={{ search_query }}{% endif %}&from_date={{ from_date }}&to_date={{ to_date }}" class="filter-tab {% if status_filter == 'WAITING' %}active{% endif %}">⏳ Chờ lấy hàng</a>
+    <a href="?status=DONE{% if search_query %}&search={{ search_query }}{% endif %}&from_date={{ from_date }}&to_date={{ to_date }}" class="filter-tab {% if status_filter == 'DONE' %}active{% endif %}">🎉 Hoàn thành</a>
+    <a href="?status=CANCELLED{% if search_query %}&search={{ search_query }}{% endif %}&from_date={{ from_date }}&to_date={{ to_date }}" class="filter-tab {% if status_filter == 'CANCELLED' %}active{% endif %}">❌ Đã hủy</a>
   </div>
-  <form method="get" class="search-form">
+  <form method="get" class="search-form" id="order-report-filter-form">
     {% if status_filter %}<input type="hidden" name="status" value="{{ status_filter }}">{% endif %}
+    <input id="fromDateInput" type="date" name="from_date" value="{{ from_date }}" required>
+    <input id="toDateInput" type="date" name="to_date" value="{{ to_date }}" required>
     <input type="text" name="search" placeholder="Tìm mã đơn hoặc khách hàng..." value="{{ search_query }}">
-    <button type="submit">
+    <button id="viewReportBtn" type="submit">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-      Tìm
+      Xem báo cáo
+    </button>
+    <button
+      id="exportExcelBtn"
+      type="submit"
+      class="secondary"
+      formaction="{% url 'order:sales_export_excel' %}"
+      formmethod="get"
+    >
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Xuất Excel
+    </button>
+    <button
+      id="exportPdfBtn"
+      type="submit"
+      class="secondary"
+      formaction="{% url 'order:sales_export_pdf' %}"
+      formmethod="get"
+    >
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/></svg>
+      Xuất PDF
     </button>
   </form>
+  <div id="orderDateRangeError" class="filter-error" hidden>
+    Ngày bắt đầu không được lớn hơn ngày kết thúc.
+  </div>
 </div>
 
 <!-- Hidden form update status -->
@@ -203,7 +234,7 @@
     </span>
     <div class="pagination">
       {% if page_obj.has_previous %}
-      <a href="?page={{ page_obj.previous_page_number }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}" class="pg-btn">‹</a>
+      <a href="?page={{ page_obj.previous_page_number }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}&from_date={{ from_date }}&to_date={{ to_date }}" class="pg-btn">‹</a>
       {% else %}
       <span class="pg-btn disabled">‹</span>
       {% endif %}
@@ -212,14 +243,14 @@
         {% if num == page_obj.number %}
           <span class="pg-btn active">{{ num }}</span>
         {% elif num == 1 or num == paginator.num_pages or num >= page_obj.number|add:"-2" and num <= page_obj.number|add:"2" %}
-          <a href="?page={{ num }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}" class="pg-btn">{{ num }}</a>
+          <a href="?page={{ num }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}&from_date={{ from_date }}&to_date={{ to_date }}" class="pg-btn">{{ num }}</a>
         {% elif num == page_obj.number|add:"-3" or num == page_obj.number|add:"3" %}
           <span class="pg-btn disabled" style="border:none;background:none;">…</span>
         {% endif %}
       {% endfor %}
 
       {% if page_obj.has_next %}
-      <a href="?page={{ page_obj.next_page_number }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}" class="pg-btn">›</a>
+      <a href="?page={{ page_obj.next_page_number }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}&from_date={{ from_date }}&to_date={{ to_date }}" class="pg-btn">›</a>
       {% else %}
       <span class="pg-btn disabled">›</span>
       {% endif %}
@@ -292,6 +323,41 @@
 </div>
 
 <script>
+const orderFilterForm = document.getElementById('order-report-filter-form');
+const fromDateInput = document.getElementById('fromDateInput');
+const toDateInput = document.getElementById('toDateInput');
+const viewReportBtn = document.getElementById('viewReportBtn');
+const exportExcelBtn = document.getElementById('exportExcelBtn');
+const exportPdfBtn = document.getElementById('exportPdfBtn');
+const orderDateRangeError = document.getElementById('orderDateRangeError');
+
+function hasInvalidDateRange() {
+  if (!fromDateInput || !toDateInput || !fromDateInput.value || !toDateInput.value) {
+    return false;
+  }
+  return fromDateInput.value > toDateInput.value;
+}
+
+function updateDateRangeState() {
+  const invalid = hasInvalidDateRange();
+  if (viewReportBtn) viewReportBtn.disabled = invalid;
+  if (exportExcelBtn) exportExcelBtn.disabled = invalid;
+  if (exportPdfBtn) exportPdfBtn.disabled = invalid;
+  if (orderDateRangeError) orderDateRangeError.hidden = !invalid;
+  return !invalid;
+}
+
+updateDateRangeState();
+if (fromDateInput) fromDateInput.addEventListener('change', updateDateRangeState);
+if (toDateInput) toDateInput.addEventListener('change', updateDateRangeState);
+if (orderFilterForm) {
+  orderFilterForm.addEventListener('submit', function (event) {
+    if (!updateDateRangeState()) {
+      event.preventDefault();
+    }
+  });
+}
+
 const PRODUCTS = {{ products_json|safe }};
 const STOCKS   = {{ stocks_json|safe }};
 let orderCount = 0;

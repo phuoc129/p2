@@ -1,5 +1,10 @@
 from django.test import TestCase
+from django.urls import reverse
+from django.utils import timezone
+from datetime import timedelta
+from io import BytesIO
 from decimal import Decimal
+from openpyxl import load_workbook
 from apps.authentication.models import User
 from apps.product.models import Category, Product
 from apps.warehouse.models import ProductStock, ExportReceipt, ExportReceiptItem
@@ -458,4 +463,211 @@ class EndToEndWorkflowTestCase(TestCase):
         # Phiếu xuất → APPROVED
         export.refresh_from_db()
         self.assertEqual(export.status, 'APPROVED')
+
+
+class SalesOrderExportExcelViewTestCase(TestCase):
+    def setUp(self):
+        self.admin_user = User.objects.create_user(
+            username='admin_export_order',
+            password='Admin@123',
+            role='ADMIN',
+            is_staff=True,
+            is_superuser=True,
+        )
+        self.sale_user = User.objects.create_user(
+            username='sale_export_order',
+            password='Sale@123',
+            role='SALE',
+        )
+
+        self.category = Category.objects.create(name='Danh muc export')
+        self.product_a = Product.objects.create(
+            name='San pham A',
+            base_price=Decimal('50000'),
+            base_unit='Bao',
+            category=self.category,
+        )
+        self.product_b = Product.objects.create(
+            name='San pham B',
+            base_price=Decimal('30000'),
+            base_unit='Thung',
+            category=self.category,
+        )
+
+        now = timezone.now()
+        self.order_confirmed = self._create_order(
+            order_code='DH-EXCEL-001',
+            customer_name='Cong ty A',
+            status='CONFIRMED',
+            created_at=now - timedelta(days=3),
+        )
+        self.order_done = self._create_order(
+            order_code='DH-EXCEL-002',
+            customer_name='Cong ty B',
+            status='DONE',
+            created_at=now - timedelta(days=1),
+        )
+
+    def _create_order(self, order_code, customer_name, status, created_at):
+        order = SalesOrder.objects.create(
+            order_code=order_code,
+            customer_name=customer_name,
+            customer_phone='0900000000',
+            created_by=self.sale_user,
+            status=status,
+        )
+        SalesOrderItem.objects.create(
+            order=order,
+            product=self.product_a,
+            quantity=Decimal('2'),
+            unit_price=Decimal('50000'),
+        )
+        SalesOrderItem.objects.create(
+            order=order,
+            product=self.product_b,
+            quantity=Decimal('1.5'),
+            unit_price=Decimal('30000'),
+        )
+        SalesOrder.objects.filter(id=order.id).update(created_at=created_at)
+        order.refresh_from_db()
+        return order
+
+    def test_export_excel_returns_xlsx_file(self):
+        self.client.login(username='admin_export_order', password='Admin@123')
+        today = timezone.localdate()
+        response = self.client.get(
+            reverse('order:sales_export_excel'),
+            {
+                'from_date': (today - timedelta(days=7)).isoformat(),
+                'to_date': today.isoformat(),
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', response['Content-Type'])
+        self.assertIn('.xlsx', response['Content-Disposition'])
+
+        workbook = load_workbook(filename=BytesIO(response.content))
+        sheet = workbook.active
+        self.assertEqual(sheet['A1'].value, 'BAO CAO DON HANG')
+
+        order_codes = [
+            sheet.cell(row=row, column=2).value
+            for row in range(10, sheet.max_row)
+            if sheet.cell(row=row, column=2).value
+        ]
+        self.assertIn(self.order_confirmed.order_code, order_codes)
+        self.assertIn(self.order_done.order_code, order_codes)
+        self.assertEqual(sheet['I10'].number_format, '#,##0.##')
+        self.assertEqual(sheet['J10'].number_format, '#,##0.##')
+
+    def test_export_excel_applies_status_filter(self):
+        self.client.login(username='admin_export_order', password='Admin@123')
+        today = timezone.localdate()
+        response = self.client.get(
+            reverse('order:sales_export_excel'),
+            {
+                'status': 'DONE',
+                'from_date': (today - timedelta(days=7)).isoformat(),
+                'to_date': today.isoformat(),
+            },
+        )
+
+        workbook = load_workbook(filename=BytesIO(response.content))
+        sheet = workbook.active
+        order_codes = [
+            sheet.cell(row=row, column=2).value
+            for row in range(10, sheet.max_row)
+            if sheet.cell(row=row, column=2).value
+        ]
+
+        self.assertIn(self.order_done.order_code, order_codes)
+        self.assertNotIn(self.order_confirmed.order_code, order_codes)
+
+    def test_export_excel_blocks_invalid_date_range(self):
+        self.client.login(username='admin_export_order', password='Admin@123')
+        today = timezone.localdate()
+
+        response = self.client.get(
+            reverse('order:sales_export_excel'),
+            {
+                'from_date': (today + timedelta(days=1)).isoformat(),
+                'to_date': today.isoformat(),
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertIn(reverse('order:sales_list'), response['Location'])
+
+
+class SalesOrderExportPdfViewTestCase(TestCase):
+    def setUp(self):
+        self.admin_user = User.objects.create_user(
+            username='admin_pdf_order',
+            password='Admin@123',
+            role='ADMIN',
+            is_staff=True,
+            is_superuser=True,
+        )
+        self.sale_user = User.objects.create_user(
+            username='sale_pdf_order',
+            password='Sale@123',
+            role='SALE',
+        )
+
+        self.category = Category.objects.create(name='Danh muc PDF')
+        self.product = Product.objects.create(
+            name='San pham PDF',
+            base_price=Decimal('45000'),
+            base_unit='Bao',
+            category=self.category,
+        )
+
+        now = timezone.now()
+        self.order_done = SalesOrder.objects.create(
+            order_code='DH-PDF-001',
+            customer_name='Cong ty PDF',
+            customer_phone='0901231234',
+            created_by=self.sale_user,
+            status='DONE',
+        )
+        SalesOrderItem.objects.create(
+            order=self.order_done,
+            product=self.product,
+            quantity=Decimal('3'),
+            unit_price=Decimal('45000'),
+        )
+        SalesOrder.objects.filter(id=self.order_done.id).update(created_at=now - timedelta(days=1))
+
+    def test_export_pdf_returns_pdf_file(self):
+        self.client.login(username='admin_pdf_order', password='Admin@123')
+        today = timezone.localdate()
+
+        response = self.client.get(
+            reverse('order:sales_export_pdf'),
+            {
+                'from_date': (today - timedelta(days=7)).isoformat(),
+                'to_date': today.isoformat(),
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('application/pdf', response['Content-Type'])
+        self.assertIn('.pdf', response['Content-Disposition'])
+        self.assertTrue(response.content.startswith(b'%PDF'))
+
+    def test_export_pdf_blocks_invalid_date_range(self):
+        self.client.login(username='admin_pdf_order', password='Admin@123')
+        today = timezone.localdate()
+
+        response = self.client.get(
+            reverse('order:sales_export_pdf'),
+            {
+                'from_date': (today + timedelta(days=1)).isoformat(),
+                'to_date': today.isoformat(),
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertIn(reverse('order:sales_list'), response['Location'])
 
