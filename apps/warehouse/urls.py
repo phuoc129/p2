@@ -21,4 +21,6 @@ urlpatterns = [
     # ── Tồn kho ───────────────────────────────────
     path('stock/', views.StockListView.as_view(), name='stock_list'),
     path('stock/report/', views.StockReportView.as_view(), name='stock_report'),
+    path('stock/report/export-excel/', views.StockReportExportExcelView.as_view(), name='stock_report_export_excel'),
+    path('stock/report/export-pdf/', views.StockReportExportPdfView.as_view(), name='stock_report_export_pdf'),
 ]

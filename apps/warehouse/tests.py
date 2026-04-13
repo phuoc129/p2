@@ -1,8 +1,11 @@
 from django.test import TestCase
 from django.utils import timezone
+from django.urls import reverse
 import uuid
 from datetime import timedelta
 from decimal import Decimal
+from io import BytesIO
+from openpyxl import load_workbook
 from apps.authentication.models import User
 from apps.product.models import Category, Product
 from apps.warehouse.models import ImportReceipt, ImportReceiptItem, ProductStock, ExportReceipt, ExportReceiptItem
@@ -495,3 +498,188 @@ class StockReportServiceTestCase(TestCase):
 
         self.assertEqual(len(rows), 1)
         self.assertEqual(rows[0]['product'].id, self.product_a.id)
+
+
+class StockReportExportExcelViewTestCase(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username='admin_export', password='Admin@123', role='ADMIN')
+        self.cat_a = Category.objects.create(name='Cat A')
+        self.cat_b = Category.objects.create(name='Cat B')
+        self.product_a = Product.objects.create(
+            name='Vat tu A',
+            base_price=Decimal('10000'),
+            base_unit='Bao',
+            category=self.cat_a,
+        )
+        self.product_b = Product.objects.create(
+            name='Vat tu B',
+            base_price=Decimal('20000'),
+            base_unit='Bao',
+            category=self.cat_b,
+        )
+
+    def _create_import(self, product, quantity, reviewed_at):
+        receipt = ImportReceipt.objects.create(
+            receipt_code=f'PN-EXCEL-{uuid.uuid4().hex[:8]}',
+            created_by=self.user,
+            reviewed_by=self.user,
+            status='APPROVED',
+            reviewed_at=reviewed_at,
+        )
+        ImportReceiptItem.objects.create(
+            receipt=receipt,
+            product=product,
+            quantity=Decimal(str(quantity)),
+            unit_price=Decimal('0'),
+        )
+
+    def test_export_excel_returns_xlsx_file(self):
+        self.client.login(username='admin_export', password='Admin@123')
+        reviewed_at = timezone.now() - timedelta(days=1)
+        self._create_import(self.product_a, 40, reviewed_at)
+
+        today = timezone.localdate()
+        from_date = (today - timedelta(days=7)).isoformat()
+        to_date = today.isoformat()
+
+        response = self.client.get(
+            reverse('warehouse:stock_report_export_excel'),
+            {'from_date': from_date, 'to_date': to_date}
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', response['Content-Type'])
+        self.assertIn('.xlsx', response['Content-Disposition'])
+
+        workbook = load_workbook(filename=BytesIO(response.content))
+        sheet = workbook.active
+
+        self.assertEqual(sheet['A1'].value, 'BAO CAO TON KHO THEO THOI GIAN')
+        self.assertEqual(sheet['A6'].value, 'Nguoi xuat: admin_export')
+        self.assertEqual(sheet['B8'].value, 'Vat tu A')
+        self.assertEqual(sheet['E8'].value, 0)
+        self.assertEqual(sheet['F8'].value, 40)
+        self.assertEqual(sheet['H8'].value, 40)
+        self.assertEqual(sheet['F8'].number_format, '#,##0.##')
+
+    def test_export_excel_applies_category_filter(self):
+        self.client.login(username='admin_export', password='Admin@123')
+        reviewed_at = timezone.now() - timedelta(days=1)
+        self._create_import(self.product_a, 10, reviewed_at)
+        self._create_import(self.product_b, 20, reviewed_at)
+
+        today = timezone.localdate()
+        from_date = (today - timedelta(days=7)).isoformat()
+        to_date = today.isoformat()
+
+        response = self.client.get(
+            reverse('warehouse:stock_report_export_excel'),
+            {
+                'from_date': from_date,
+                'to_date': to_date,
+                'category': str(self.cat_a.id),
+            }
+        )
+
+        workbook = load_workbook(filename=BytesIO(response.content))
+        sheet = workbook.active
+
+        # Chỉ còn 1 dòng dữ liệu của danh mục Cat A.
+        self.assertEqual(sheet['B8'].value, 'Vat tu A')
+        self.assertIsNone(sheet['B9'].value)
+
+    def test_stock_report_view_blocks_invalid_date_range(self):
+        self.client.login(username='admin_export', password='Admin@123')
+        reviewed_at = timezone.now() - timedelta(days=1)
+        self._create_import(self.product_a, 15, reviewed_at)
+
+        today = timezone.localdate()
+        response = self.client.get(
+            reverse('warehouse:stock_report'),
+            {
+                'from_date': (today + timedelta(days=1)).isoformat(),
+                'to_date': today.isoformat(),
+            }
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context['rows'], [])
+        self.assertEqual(response.context['totals']['opening'], 0)
+        self.assertEqual(response.context['totals']['import_qty'], 0)
+        self.assertEqual(response.context['totals']['export_qty'], 0)
+        self.assertEqual(response.context['totals']['closing'], 0)
+
+    def test_export_excel_blocks_invalid_date_range(self):
+        self.client.login(username='admin_export', password='Admin@123')
+        today = timezone.localdate()
+
+        response = self.client.get(
+            reverse('warehouse:stock_report_export_excel'),
+            {
+                'from_date': (today + timedelta(days=1)).isoformat(),
+                'to_date': today.isoformat(),
+            }
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertIn(reverse('warehouse:stock_report'), response['Location'])
+
+
+class StockReportExportPdfViewTestCase(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username='admin_pdf', password='Admin@123', role='ADMIN')
+        self.category = Category.objects.create(name='Cat PDF')
+        self.product = Product.objects.create(
+            name='Vat tu PDF',
+            base_price=Decimal('15000'),
+            base_unit='Bao',
+            category=self.category,
+        )
+
+    def _create_import(self, quantity, reviewed_at):
+        receipt = ImportReceipt.objects.create(
+            receipt_code=f'PN-PDF-{uuid.uuid4().hex[:8]}',
+            created_by=self.user,
+            reviewed_by=self.user,
+            status='APPROVED',
+            reviewed_at=reviewed_at,
+        )
+        ImportReceiptItem.objects.create(
+            receipt=receipt,
+            product=self.product,
+            quantity=Decimal(str(quantity)),
+            unit_price=Decimal('0'),
+        )
+
+    def test_export_pdf_returns_pdf_file(self):
+        self.client.login(username='admin_pdf', password='Admin@123')
+        self._create_import(25, timezone.now() - timedelta(days=1))
+
+        today = timezone.localdate()
+        response = self.client.get(
+            reverse('warehouse:stock_report_export_pdf'),
+            {
+                'from_date': (today - timedelta(days=7)).isoformat(),
+                'to_date': today.isoformat(),
+            }
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('application/pdf', response['Content-Type'])
+        self.assertIn('.pdf', response['Content-Disposition'])
+        self.assertTrue(response.content.startswith(b'%PDF'))
+
+    def test_export_pdf_blocks_invalid_date_range(self):
+        self.client.login(username='admin_pdf', password='Admin@123')
+        today = timezone.localdate()
+
+        response = self.client.get(
+            reverse('warehouse:stock_report_export_pdf'),
+            {
+                'from_date': (today + timedelta(days=1)).isoformat(),
+                'to_date': today.isoformat(),
+            }
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertIn(reverse('warehouse:stock_report'), response['Location'])

@@ -44,6 +44,18 @@
     border-color: var(--accent);
     box-shadow: 0 0 0 3px rgba(232,164,39,.08);
 }
+.filter-wrap .btn[disabled] {
+    opacity: .45;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+.filter-error {
+    width: 100%;
+    margin-top: 2px;
+    color: #ff7b7b;
+    font-size: 12px;
+    font-weight: 600;
+}
 .summary-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
@@ -106,12 +118,12 @@
 <form method="get" class="filter-wrap">
     <div class="filter-field">
         <label class="filter-label">Từ ngày</label>
-        <input type="date" name="from_date" value="{{ from_date }}" required>
+        <input id="fromDateInput" type="date" name="from_date" value="{{ from_date }}" required>
     </div>
 
     <div class="filter-field">
         <label class="filter-label">Đến ngày</label>
-        <input type="date" name="to_date" value="{{ to_date }}" required>
+        <input id="toDateInput" type="date" name="to_date" value="{{ to_date }}" required>
     </div>
 
     <div class="filter-field" style="min-width:260px;">
@@ -124,15 +136,41 @@
         </select>
     </div>
 
-    <button type="submit" class="btn btn-primary">
+    <button id="viewReportBtn" type="submit" class="btn btn-primary">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         Xem báo cáo
+    </button>
+
+    <button
+        id="exportExcelBtn"
+        type="submit"
+        class="btn btn-ghost"
+        formaction="{% url 'warehouse:stock_report_export_excel' %}"
+        formmethod="get"
+    >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Xuất Excel
+    </button>
+
+    <button
+        id="exportPdfBtn"
+        type="submit"
+        class="btn btn-ghost"
+        formaction="{% url 'warehouse:stock_report_export_pdf' %}"
+        formmethod="get"
+    >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/></svg>
+        Xuất PDF
     </button>
 
     <a class="btn btn-ghost" href="{% url 'warehouse:stock_report' %}">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.13-3.36L23 10"/><path d="M20.49 15a9 9 0 0 1-14.13 3.36L1 14"/></svg>
         Làm mới
     </a>
+
+    <div id="dateRangeError" class="filter-error" hidden>
+        Ngày bắt đầu không được lớn hơn ngày kết thúc.
+    </div>
 </form>
 
 <div class="summary-grid">
@@ -189,7 +227,61 @@
     </table>
     <div class="table-note">
         <span>Tổng số vật liệu: {{ rows|length }}</span>
+        <span>Người xuất: {{ generated_by }}</span>
         <span>Số liệu mới nhất lúc: {{ generated_at|date:"d/m/Y H:i:s" }}</span>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    const fromInput = document.getElementById('fromDateInput');
+    const toInput = document.getElementById('toDateInput');
+    const viewBtn = document.getElementById('viewReportBtn');
+    const exportBtn = document.getElementById('exportExcelBtn');
+    const exportPdfBtn = document.getElementById('exportPdfBtn');
+    const errorEl = document.getElementById('dateRangeError');
+    const form = document.querySelector('.filter-wrap');
+
+    function hasInvalidRange() {
+        if (!fromInput || !toInput || !fromInput.value || !toInput.value) {
+            return false;
+        }
+        return fromInput.value > toInput.value;
+    }
+
+    function updateRangeState() {
+        const invalid = hasInvalidRange();
+        if (viewBtn) {
+            viewBtn.disabled = invalid;
+        }
+        if (exportBtn) {
+            exportBtn.disabled = invalid;
+        }
+        if (exportPdfBtn) {
+            exportPdfBtn.disabled = invalid;
+        }
+        if (errorEl) {
+            errorEl.hidden = !invalid;
+        }
+        return !invalid;
+    }
+
+    updateRangeState();
+    if (fromInput) {
+        fromInput.addEventListener('change', updateRangeState);
+    }
+    if (toInput) {
+        toInput.addEventListener('change', updateRangeState);
+    }
+    if (form) {
+        form.addEventListener('submit', function (event) {
+            if (!updateRangeState()) {
+                event.preventDefault();
+            }
+        });
+    }
+})();
+</script>
 {% endblock %}
