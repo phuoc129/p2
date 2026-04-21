@@ -8,5 +8,6 @@ urlpatterns = [
     path('sales/', views.SalesOrderListView.as_view(), name='sales_list'),
     path('sales/export-excel/', views.SalesOrderExportExcelView.as_view(), name='sales_export_excel'),
     path('sales/export-pdf/', views.SalesOrderExportPdfView.as_view(), name='sales_export_pdf'),
+    path('sales/report/', views.SalesReportView.as_view(), name='sales_report'),
     path('sales/<uuid:pk>/', views.SalesOrderDetailView.as_view(), name='sales_detail'),
 ]

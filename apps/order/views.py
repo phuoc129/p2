@@ -517,3 +517,167 @@ class SalesOrderDetailView(LoginRequiredMixin, View):
             'user_role': 'ADMIN' if request.user.is_superuser else request.user.role,
             'valid_transitions': SalesOrderService.VALID_TRANSITIONS.get(order.status, []),
         })
+
+class SalesReportView(LoginRequiredMixin, View):
+ 
+    def get(self, request):
+        from django.db.models import (
+            F, Sum, Count, ExpressionWrapper, DecimalField
+        )
+        from django.db.models.functions import TruncMonth, TruncDate
+        from apps.order.models import SalesOrderItem
+        from datetime import timedelta
+        import json
+ 
+        user = request.user
+        service = SalesOrderService()
+ 
+        # Phân quyền
+        user_role = 'ADMIN' if user.is_superuser else user.role
+        if user_role == 'SALE':
+            base_qs = service.get_by_user(user)
+        else:
+            base_qs = service.get_all()
+ 
+        # Bộ lọc ngày (mặc định 12 tháng gần nhất)
+        today = timezone.localdate()
+        default_from = (today.replace(day=1)).replace(
+            year=today.year - 1 if today.month == 1 else today.year,
+            month=12 if today.month == 1 else today.month,
+        )
+        # Đơn giản hơn: lùi 365 ngày
+        default_from = today - timedelta(days=364)
+        default_from = default_from.replace(day=1)
+ 
+        from_date_str = request.GET.get('from_date', default_from.isoformat())
+        to_date_str   = request.GET.get('to_date',   today.isoformat())
+ 
+        try:
+            from_date = datetime.strptime(from_date_str, '%Y-%m-%d').date()
+            to_date   = datetime.strptime(to_date_str,   '%Y-%m-%d').date()
+        except ValueError:
+            from_date = default_from
+            to_date   = today
+ 
+        if from_date > to_date:
+            from_date, to_date = default_from, today
+ 
+        filtered_qs = base_qs.filter(
+            created_at__date__gte=from_date,
+            created_at__date__lte=to_date,
+        )
+ 
+        # ── Doanh thu & số đơn theo tháng ────────────────────
+        monthly_counts = (
+            filtered_qs
+            .annotate(month=TruncMonth('created_at'))
+            .values('month')
+            .annotate(order_count=Count('id'))
+            .order_by('month')
+        )
+        count_map = {
+            r['month'].strftime('%Y-%m'): r['order_count']
+            for r in monthly_counts
+        }
+ 
+        revenue_expr = ExpressionWrapper(
+            F('quantity') * F('unit_price'),
+            output_field=DecimalField(max_digits=20, decimal_places=4)
+        )
+        monthly_revenue = (
+            SalesOrderItem.objects
+            .filter(order__in=filtered_qs)
+            .annotate(month=TruncMonth('order__created_at'))
+            .values('month')
+            .annotate(revenue=Sum(revenue_expr))
+            .order_by('month')
+        )
+        revenue_map = {
+            r['month'].strftime('%Y-%m'): float(r['revenue'] or 0)
+            for r in monthly_revenue
+        }
+ 
+        # Tạo dãy tháng liên tiếp
+        chart_labels  = []
+        chart_revenue = []
+        chart_orders  = []
+        cur = from_date.replace(day=1)
+        end_month = to_date.replace(day=1)
+        while cur <= end_month:
+            key = cur.strftime('%Y-%m')
+            chart_labels.append(cur.strftime('%m/%Y'))
+            chart_revenue.append(revenue_map.get(key, 0))
+            chart_orders.append(count_map.get(key, 0))
+            if cur.month == 12:
+                cur = cur.replace(year=cur.year + 1, month=1)
+            else:
+                cur = cur.replace(month=cur.month + 1)
+ 
+        # ── Thống kê trạng thái ───────────────────────────────
+        status_stats = (
+            filtered_qs.values('status').annotate(cnt=Count('id'))
+        )
+        status_map = {s['status']: s['cnt'] for s in status_stats}
+ 
+        total_orders  = filtered_qs.count()
+        total_revenue = sum(chart_revenue)
+        done_orders   = status_map.get('DONE', 0)
+        completion_rate = round(done_orders / total_orders * 100, 1) if total_orders else 0
+ 
+        # ── Top sản phẩm bán chạy (chỉ đơn DONE) ─────────────
+        top_products = (
+            SalesOrderItem.objects
+            .filter(order__in=filtered_qs, order__status='DONE')
+            .values('product__name', 'product__base_unit')
+            .annotate(
+                total_qty=Sum('quantity'),
+                total_rev=Sum(revenue_expr),
+            )
+            .order_by('-total_rev')[:10]
+        )
+ 
+        # ── Số đơn theo ngày (30 ngày gần nhất) ──────────────
+        thirty_ago = to_date - timedelta(days=29)
+        daily_raw = (
+            filtered_qs
+            .filter(created_at__date__gte=thirty_ago)
+            .annotate(day=TruncDate('created_at'))
+            .values('day')
+            .annotate(cnt=Count('id'))
+            .order_by('day')
+        )
+        daily_map = {r['day'].strftime('%Y-%m-%d'): r['cnt'] for r in daily_raw}
+        daily_labels = []
+        daily_counts = []
+        d = thirty_ago
+        while d <= to_date:
+            daily_labels.append(d.strftime('%d/%m'))
+            daily_counts.append(daily_map.get(d.strftime('%Y-%m-%d'), 0))
+            d += timedelta(days=1)
+ 
+        context = {
+            'from_date': from_date.isoformat(),
+            'to_date':   to_date.isoformat(),
+            # Chart JSON
+            'chart_labels_json':  json.dumps(chart_labels),
+            'chart_revenue_json': json.dumps(chart_revenue),
+            'chart_orders_json':  json.dumps(chart_orders),
+            'daily_labels_json':  json.dumps(daily_labels),
+            'daily_counts_json':  json.dumps(daily_counts),
+            # Donut
+            'status_confirmed': status_map.get('CONFIRMED', 0),
+            'status_waiting':   status_map.get('WAITING', 0),
+            'status_done':      status_map.get('DONE', 0),
+            'status_cancelled': status_map.get('CANCELLED', 0),
+            # KPIs
+            'total_orders':     total_orders,
+            'total_revenue':    total_revenue,
+            'done_orders':      done_orders,
+            'cancel_orders':    status_map.get('CANCELLED', 0),
+            'pending_orders':   status_map.get('WAITING', 0) + status_map.get('CONFIRMED', 0),
+            'completion_rate':  completion_rate,
+            # Table
+            'top_products':     top_products,
+            'user_role':        user_role,
+        }
+        return render(request, 'order/sales_report.html', context)
